@@ -17,7 +17,9 @@ import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
+import net.minecraft.world.level.chunk.PalettedContainerFactory;
 import net.minecraft.world.level.chunk.LevelChunkSection;
+import net.minecraft.world.level.chunk.Strategy;
 import net.minecraft.world.level.chunk.PalettedContainer;
 import net.minecraft.world.level.chunk.ProtoChunk;
 import net.minecraft.world.level.chunk.UpgradeData;
@@ -33,16 +35,16 @@ public abstract class ChunkAccessArenaMixin {
             method = "<init>",
             at = @At(
                     value = "INVOKE",
-                    target = "Lnet/minecraft/world/level/chunk/ChunkAccess;replaceMissingSections(Lnet/minecraft/core/Registry;[Lnet/minecraft/world/level/chunk/LevelChunkSection;)V"
+                    target = "Lnet/minecraft/world/level/chunk/ChunkAccess;replaceMissingSections(Lnet/minecraft/world/level/chunk/PalettedContainerFactory;[Lnet/minecraft/world/level/chunk/LevelChunkSection;)V"
             )
     )
     private void byepregen$replaceMissingSections(
-            Registry<Biome> biomeRegistry,
+            PalettedContainerFactory containerFactory,
             LevelChunkSection[] sections,
             ChunkPos chunkPos,
             UpgradeData upgradeData,
             LevelHeightAccessor heightAccessor,
-            Registry<Biome> constructorBiomeRegistry,
+            PalettedContainerFactory constructorContainerFactory,
             long inhabitedTime,
             @Nullable LevelChunkSection[] providedSections,
             @Nullable BlendingData blendingData
@@ -52,8 +54,8 @@ public abstract class ChunkAccessArenaMixin {
         for (int i = 0; i < sections.length; ++i) {
             if (sections[i] == null) {
                 sections[i] = new LevelChunkSection(
-                        this.byepregen$createStateContainer(config, isProtoChunk, heightAccessor),
-                        this.byepregen$createBiomeContainer(biomeRegistry)
+                        this.byepregen$createStateContainer(config, isProtoChunk, heightAccessor, containerFactory),
+                        containerFactory.createForBiomes()
                 );
             }
         }
@@ -61,15 +63,12 @@ public abstract class ChunkAccessArenaMixin {
 
     @Unique
     private PalettedContainer<BlockState> byepregen$createStateContainer(
-            Config config, boolean isProtoChunk, LevelHeightAccessor heightAccessor) {
+            Config config, boolean isProtoChunk, LevelHeightAccessor heightAccessor,
+            PalettedContainerFactory containerFactory) {
         if (byepregen$shouldUseArena(config, isProtoChunk, heightAccessor)) {
             return new ArenaBlockStatePalettedContainer();
         }
-        return new PalettedContainer<>(
-                Block.BLOCK_STATE_REGISTRY,
-                Blocks.AIR.defaultBlockState(),
-                PalettedContainer.Strategy.SECTION_STATES
-        );
+        return containerFactory.createForBlockStates();
     }
 
     @Unique
@@ -86,12 +85,4 @@ public abstract class ChunkAccessArenaMixin {
         return config.enableServerRuntimeArenaPalette;
     }
 
-    @Unique
-    private PalettedContainer<Holder<Biome>> byepregen$createBiomeContainer(Registry<Biome> biomeRegistry) {
-        return new PalettedContainer<>(
-                biomeRegistry.asHolderIdMap(),
-                biomeRegistry.getHolderOrThrow(Biomes.PLAINS),
-                PalettedContainer.Strategy.SECTION_BIOMES
-        );
-    }
 }

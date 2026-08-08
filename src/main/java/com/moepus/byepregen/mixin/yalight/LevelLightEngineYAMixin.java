@@ -193,7 +193,7 @@ public abstract class LevelLightEngineYAMixin implements YALightEngineHolder {
      * @reason Route section light state to YA light engine.
      */
     @Overwrite
-    public boolean lightOnInSection(SectionPos pos) {
-        return this.byepregen$yaLightEngine.lightOnInSection(pos);
+    public boolean lightOnInColumn(long packedColumnPos) {
+        return this.byepregen$yaLightEngine.lightOnInColumn(packedColumnPos);
     }
 }

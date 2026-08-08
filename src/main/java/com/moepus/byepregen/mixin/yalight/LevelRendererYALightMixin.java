@@ -4,7 +4,7 @@ import com.moepus.byepregen.yalight.*;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
-import net.minecraft.world.level.BlockAndTintGetter;
+import net.minecraft.world.level.BlockAndLightGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.Block;
@@ -21,7 +21,7 @@ public abstract class LevelRendererYALightMixin {
      * @reason
      */
     @Overwrite
-    public static int getLightColor(BlockAndTintGetter blockGetter, BlockPos pos) {
+    public static int getLightCoords(BlockAndLightGetter blockGetter, BlockPos pos) {
         if (blockGetter instanceof Level level) {
             int x = pos.getX();
             int y = pos.getY();
@@ -32,12 +32,12 @@ public abstract class LevelRendererYALightMixin {
                 int rawId = YAChunkRunCache.rawIdAt(chunk, x, y, z);
                 int lightClass = YABlockStateLightClass.fromRawId(rawId);
                 if (lightClass == YABlockStateLightClass.SLOW && rawId >= 0) {
-                    return getLightColor(level, Block.stateById(rawId), pos);
+                    return getLightCoords(LevelRenderer.BrightnessGetter.DEFAULT, blockGetter, Block.stateById(rawId), pos);
                 }
             }
             return light;
         }
-        return getLightColor(blockGetter, blockGetter.getBlockState(pos), pos);
+        return getLightCoords(LevelRenderer.BrightnessGetter.DEFAULT, blockGetter, blockGetter.getBlockState(pos), pos);
     }
 
     /**
@@ -45,7 +45,12 @@ public abstract class LevelRendererYALightMixin {
      * @reason
      */
     @Overwrite
-    public static int getLightColor(BlockAndTintGetter blockGetter, BlockState state, BlockPos pos) {
+    public static int getLightCoords(
+            LevelRenderer.BrightnessGetter brightnessGetter,
+            BlockAndLightGetter blockGetter,
+            BlockState state,
+            BlockPos pos
+    ) {
         int light;
         if (blockGetter instanceof Level level) {
             ChunkAccess chunk = byepregen$getChunkNow(level, pos.getX(), pos.getZ());

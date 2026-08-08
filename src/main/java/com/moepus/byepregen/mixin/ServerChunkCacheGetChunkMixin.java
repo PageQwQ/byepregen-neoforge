@@ -96,14 +96,14 @@ public abstract class ServerChunkCacheGetChunkMixin implements YAImmediateChunkA
             return currentlyLoading;
         }
         LevelChunk chunk = (LevelChunk) holder.getChunkIfPresent(status);
-        this.storeInCache(ChunkPos.asLong(chunkX, chunkZ), chunk, status);
+        this.storeInCache(ChunkPos.pack(chunkX, chunkZ), chunk, status);
         return chunk;
     }
 
     @Override
     @Nullable
     public ChunkAccess byepregen$getAnyChunkNow(int chunkX, int chunkZ) {
-        long chunkPos = ChunkPos.asLong(chunkX, chunkZ);
+        long chunkPos = ChunkPos.pack(chunkX, chunkZ);
         if (Thread.currentThread() != this.mainThread) {
             ChunkHolder holder = this.getVisibleChunkIfPresent(chunkPos);
             return holder == null ? null : holder.getLatestChunk();

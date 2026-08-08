@@ -28,7 +28,7 @@ public abstract class WorldGenRegionSectionCacheMixin implements WorldGenRegionS
 
     @Override
     public LevelChunkSection bpg$getCachedSection(int sectionX, int sectionIndex, int sectionZ) {
-        long sectionChunkKey = ChunkPos.asLong(sectionX, sectionZ);
+        long sectionChunkKey = ChunkPos.pack(sectionX, sectionZ);
         if (this.bpg$sectionCacheValid
                 && this.bpg$sectionChunkKey == sectionChunkKey
                 && this.bpg$sectionIndex == sectionIndex) {

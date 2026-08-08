@@ -51,8 +51,8 @@ final class YAChunkEdgeChecker {
         this.neighborStepX = direction.getStepX();
         this.neighborStepZ = direction.getStepZ();
         ChunkAccess neighbor = this.storage.chunkAccess(
-                this.centerPos.x + this.neighborStepX,
-                this.centerPos.z + this.neighborStepZ);
+                this.centerPos.x() + this.neighborStepX,
+                this.centerPos.z() + this.neighborStepZ);
         if (!this.storage.lightEnabled(neighbor)) {
             return;
         }

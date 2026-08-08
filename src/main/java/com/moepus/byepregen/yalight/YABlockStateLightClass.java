@@ -67,7 +67,7 @@ public final class YABlockStateLightClass {
         }
 
         // Only classify facts that are stable without a world/pos lookup. Everything ambiguous stays slow.
-        int lightBlock = state.getLightBlock(EmptyBlockGetter.INSTANCE, BlockPos.ZERO);
+        int lightBlock = state.getLightDampening();
         boolean emptyShape = YALightMath.isEmptyShape(state);
         if (lightBlock == 0 && emptyShape) {
             return CLEAR;
@@ -76,7 +76,7 @@ public final class YABlockStateLightClass {
             return SHAPED;
         }
         // FULL is packed as the constant 1, so it must be safe to use a constant full face shape.
-        if (lightBlock >= 15 && state.isSolidRender(EmptyBlockGetter.INSTANCE, BlockPos.ZERO)) {
+        if (lightBlock >= 15 && state.isSolidRender()) {
             return FULL;
         }
         return SLOW;

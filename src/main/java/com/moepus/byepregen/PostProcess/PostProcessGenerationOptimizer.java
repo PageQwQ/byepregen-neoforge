@@ -18,7 +18,7 @@ import net.minecraft.world.level.block.LightBlock;
 import net.minecraft.world.level.block.LeavesBlock;
 import net.minecraft.world.level.block.MagmaBlock;
 import net.minecraft.world.level.block.SlabBlock;
-import net.minecraft.world.level.block.SnowyDirtBlock;
+import net.minecraft.world.level.block.SnowyBlock;
 import net.minecraft.world.level.block.SnowLayerBlock;
 import net.minecraft.world.level.block.TrapDoorBlock;
 import net.minecraft.world.level.block.state.BlockState;
@@ -67,7 +67,7 @@ public final class PostProcessGenerationOptimizer {
             case CactusBlock ignored -> {
                 return updateFromNeighbourShape(state, level, pos, Direction.DOWN);
             }
-            case SnowyDirtBlock ignored -> {
+            case SnowyBlock ignored -> {
                 return updateFromNeighbourShapes(state, level, pos, UP_ONLY);
             }
             case MagmaBlock ignored -> {
@@ -110,7 +110,7 @@ public final class PostProcessGenerationOptimizer {
     private static BlockState updateFromNeighbourShape(BlockState state, LevelAccessor level, BlockPos pos, Direction direction) {
         BlockPos.MutableBlockPos mutablePos = new BlockPos.MutableBlockPos();
         mutablePos.setWithOffset(pos, direction);
-        return state.updateShape(direction, level.getBlockState(mutablePos), level, pos, mutablePos);
+        return state.updateShape(level, level, pos, direction, mutablePos, level.getBlockState(mutablePos), level.getRandom());
     }
 
     private static BlockState updateFromNeighbourShapes(BlockState state, LevelAccessor level, BlockPos pos, Direction[] directions) {
@@ -119,7 +119,7 @@ public final class PostProcessGenerationOptimizer {
 
         for (Direction direction : directions) {
             mutablePos.setWithOffset(pos, direction);
-            updatedState = updatedState.updateShape(direction, level.getBlockState(mutablePos), level, pos, mutablePos);
+            updatedState = updatedState.updateShape(level, level, pos, direction, mutablePos, level.getBlockState(mutablePos), level.getRandom());
         }
 
         return updatedState;

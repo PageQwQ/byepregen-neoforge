@@ -17,10 +17,9 @@ import net.minecraft.util.ZeroBitStorage;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.chunk.Palette;
 import net.minecraft.world.level.chunk.PalettedContainer;
 import net.minecraft.world.level.chunk.PalettedContainerRO;
-import net.minecraft.world.level.chunk.SingleValuePalette;
+import net.minecraft.world.level.chunk.Strategy;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -30,13 +29,7 @@ import org.jetbrains.annotations.NotNull;
  */
 public final class ArenaBlockStatePalettedContainer extends PalettedContainer<BlockState> implements BlockStateRawIdAccess {
     private static final BlockState AIR = Blocks.AIR.defaultBlockState();
-    private static final PalettedContainer.Configuration<BlockState> DUMMY_PARENT_CONFIGURATION =
-            Strategy.SECTION_STATES.getConfiguration(Block.BLOCK_STATE_REGISTRY, 0);
-    private static final PalettedContainer.Data<BlockState> DUMMY_PARENT_DATA = new PalettedContainer.Data<>(
-            DUMMY_PARENT_CONFIGURATION,
-            new ZeroBitStorage(SECTION_SIZE),
-            createDummyParentPalette()
-    );
+    private static final Strategy<BlockState> STRATEGY = Strategy.createForBlockStates(Block.BLOCK_STATE_REGISTRY);
     public static final int AIR_RAW_ID = Block.BLOCK_STATE_REGISTRY.getId(AIR);
 
     private int uniformRawId = AIR_RAW_ID;
@@ -47,15 +40,7 @@ public final class ArenaBlockStatePalettedContainer extends PalettedContainer<Bl
     private Int2IntOpenHashMap denseRawIdCounts;
 
     public ArenaBlockStatePalettedContainer() {
-        super(Block.BLOCK_STATE_REGISTRY, Strategy.SECTION_STATES, DUMMY_PARENT_DATA);
-    }
-
-    private static Palette<BlockState> createDummyParentPalette() {
-        return new SingleValuePalette<>(
-                Block.BLOCK_STATE_REGISTRY,
-                null,
-                List.of(AIR)
-        );
+        super(AIR, STRATEGY);
     }
 
     public void releaseRawIds() {
@@ -149,16 +134,25 @@ public final class ArenaBlockStatePalettedContainer extends PalettedContainer<Bl
 
     @Override
     public void write(@NotNull FriendlyByteBuf buffer) {
-        NetworkWriter.write(buffer, this);
+        if (ARENA_NETWORK_WRITE_WARNED.compareAndSet(false, true)) {
+            com.mojang.logging.LogUtils.getLogger().warn(
+                    "[byepregen] WARNING: arena container reached the network path; materializing on the fly");
+        }
+        // Fallback safety: an arena container must never be serialized with its custom
+        // network format, the client cannot parse it. Materialize to vanilla and write.
+        ArenaSectionMaterializer.materializeContainer(this).write(buffer);
     }
+
+    private static final java.util.concurrent.atomic.AtomicBoolean ARENA_NETWORK_WRITE_WARNED =
+            new java.util.concurrent.atomic.AtomicBoolean();
 
     @Override
     public int getSerializedSize() {
-        return NetworkWriter.serializedSize(this);
+        return ArenaSectionMaterializer.materializeContainer(this).getSerializedSize();
     }
 
     @Override
-    public PalettedContainerRO.@NotNull PackedData<BlockState> pack(@NotNull IdMap<BlockState> idMap, @NotNull Strategy strategy) {
+    public @NotNull PalettedContainerRO.PackedData<BlockState> pack(@NotNull Strategy<BlockState> strategy) {
         throw new UnsupportedOperationException();
     }
 

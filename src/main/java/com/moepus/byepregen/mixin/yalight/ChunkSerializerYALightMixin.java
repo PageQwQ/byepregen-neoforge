@@ -5,31 +5,27 @@ import com.moepus.byepregen.yalight.YAChunkLightAccess;
 import com.moepus.byepregen.yalight.YAChunkLightData;
 import com.moepus.byepregen.yalight.YANibbleArray;
 import javax.annotation.Nullable;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
 import net.minecraft.core.SectionPos;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.entity.ai.village.poi.PoiManager;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.DataLayer;
 import net.minecraft.world.level.chunk.ProtoChunk;
-import net.minecraft.world.level.chunk.storage.ChunkSerializer;
-import net.minecraft.world.level.chunk.storage.RegionStorageInfo;
+import net.minecraft.world.level.chunk.storage.SerializableChunkData;
 import net.minecraft.world.level.lighting.LayerLightEventListener;
+import net.minecraft.world.level.lighting.LevelLightEngine;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
-import org.spongepowered.asm.mixin.injection.Slice;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-@Mixin(ChunkSerializer.class)
+@Mixin(SerializableChunkData.class)
 public abstract class ChunkSerializerYALightMixin {
     @Redirect(
-            method = "write",
+            method = "copyOf",
             at = @At(
                     value = "INVOKE",
                     target = "Lnet/minecraft/world/level/lighting/LayerLightEventListener;getDataLayerData(Lnet/minecraft/core/SectionPos;)Lnet/minecraft/world/level/chunk/DataLayer;",
@@ -45,7 +41,7 @@ public abstract class ChunkSerializerYALightMixin {
     }
 
     @Redirect(
-            method = "write",
+            method = "copyOf",
             at = @At(
                     value = "INVOKE",
                     target = "Lnet/minecraft/world/level/lighting/LayerLightEventListener;getDataLayerData(Lnet/minecraft/core/SectionPos;)Lnet/minecraft/world/level/chunk/DataLayer;",
@@ -68,106 +64,84 @@ public abstract class ChunkSerializerYALightMixin {
         return nibble == null ? null : nibble.toVanilla();
     }
 
+    @Unique
+    private static final ThreadLocal<it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap<DataLayer>> BYEPREGEN_BLOCK_LIGHT_CAPTURE =
+            ThreadLocal.withInitial(it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap::new);
+
+    @Unique
+    private static final ThreadLocal<it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap<DataLayer>> BYEPREGEN_SKY_LIGHT_CAPTURE =
+            ThreadLocal.withInitial(it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap::new);
+
     @Redirect(
             method = "read",
             at = @At(
                     value = "INVOKE",
-                    target = "Lnet/minecraft/nbt/CompoundTag;contains(Ljava/lang/String;I)Z"
-            ),
-            slice = @Slice(
-                    from = @At(value = "CONSTANT", args = "stringValue=BlockLight"),
-                    to = @At(value = "CONSTANT", args = "stringValue=SkyLight")
+                    target = "Lnet/minecraft/world/level/lighting/LevelLightEngine;queueSectionData(Lnet/minecraft/world/level/LightLayer;Lnet/minecraft/core/SectionPos;Lnet/minecraft/world/level/chunk/DataLayer;)V",
+                    ordinal = 0
             )
     )
-    private static boolean byepregen$skipYABlockLightTag(
-            CompoundTag sectionTag,
-            String key,
-            int type,
-            ServerLevel level,
-            PoiManager poiManager,
-            RegionStorageInfo regionStorageInfo,
-            ChunkPos chunkPos,
-            CompoundTag chunkTag
+    private static void byepregen$readYABlockLight(
+            LevelLightEngine lightEngine,
+            LightLayer layer,
+            SectionPos sectionPos,
+            DataLayer dataLayer
     ) {
-        return false;
+        if (dataLayer != null) {
+            BYEPREGEN_BLOCK_LIGHT_CAPTURE.get().put(sectionPos.y(), dataLayer);
+        }
     }
 
     @Redirect(
             method = "read",
             at = @At(
                     value = "INVOKE",
-                    target = "Lnet/minecraft/nbt/CompoundTag;contains(Ljava/lang/String;I)Z"
-            ),
-            slice = @Slice(
-                    from = @At(value = "CONSTANT", args = "stringValue=SkyLight"),
-                    to = @At(
-                            value = "INVOKE",
-                            target = "Lnet/minecraft/world/level/lighting/LevelLightEngine;queueSectionData(Lnet/minecraft/world/level/LightLayer;Lnet/minecraft/core/SectionPos;Lnet/minecraft/world/level/chunk/DataLayer;)V"
-                    )
+                    target = "Lnet/minecraft/world/level/lighting/LevelLightEngine;queueSectionData(Lnet/minecraft/world/level/LightLayer;Lnet/minecraft/core/SectionPos;Lnet/minecraft/world/level/chunk/DataLayer;)V",
+                    ordinal = 1
             )
     )
-    private static boolean byepregen$skipYASkyLightTag(
-            CompoundTag sectionTag,
-            String key,
-            int type,
-            ServerLevel level,
-            PoiManager poiManager,
-            RegionStorageInfo regionStorageInfo,
-            ChunkPos chunkPos,
-            CompoundTag chunkTag
+    private static void byepregen$readYASkyLight(
+            LevelLightEngine lightEngine,
+            LightLayer layer,
+            SectionPos sectionPos,
+            DataLayer dataLayer
     ) {
-        return false;
+        if (dataLayer != null) {
+            BYEPREGEN_SKY_LIGHT_CAPTURE.get().put(sectionPos.y(), dataLayer);
+        }
     }
 
     @Inject(
             method = "read",
-            at = @At(
-                    value = "INVOKE",
-                    target = "Lnet/minecraft/world/level/chunk/ChunkAccess;setLightCorrect(Z)V",
-                    shift = At.Shift.AFTER
-            )
+            at = @At("RETURN")
     )
-    private static void byepregen$installYALightData(
+    private static void byepregen$finishYALightLoad(
             ServerLevel level,
-            PoiManager poiManager,
-            RegionStorageInfo regionStorageInfo,
+            net.minecraft.world.entity.ai.village.poi.PoiManager poiManager,
+            net.minecraft.world.level.chunk.storage.RegionStorageInfo regionStorageInfo,
             ChunkPos chunkPos,
-            CompoundTag chunkTag,
-            CallbackInfoReturnable<ProtoChunk> cir,
-            @Local(ordinal = 0) ListTag sections,
-            @Local(ordinal = 0) ChunkAccess chunk
+            CallbackInfoReturnable<ProtoChunk> cir
     ) {
-        byepregen$readYALightTags(level, sections, chunk);
+        ChunkAccess chunk = cir.getReturnValue();
+        if (chunk instanceof YAChunkLightAccess access) {
+            byepregen$installCaptured(access, LightLayer.BLOCK, BYEPREGEN_BLOCK_LIGHT_CAPTURE.get());
+            byepregen$installCaptured(access, LightLayer.SKY, BYEPREGEN_SKY_LIGHT_CAPTURE.get());
+        }
+        BYEPREGEN_BLOCK_LIGHT_CAPTURE.get().clear();
+        BYEPREGEN_SKY_LIGHT_CAPTURE.get().clear();
     }
 
     @Unique
-    private static void byepregen$readYALightTags(ServerLevel level, ListTag sections, ChunkAccess chunk) {
-        YAChunkLightAccess access = (YAChunkLightAccess)chunk;
-
-        YAChunkLightData blockData = null;
-        YAChunkLightData skyData = null;
-        boolean hasSkyLight = level.dimensionType().hasSkyLight();
-        for (int i = 0; i < sections.size(); ++i) {
-            CompoundTag sectionTag = sections.getCompound(i);
-            int sectionY = sectionTag.getByte("Y");
-            if (sectionTag.contains("BlockLight", 7)) {
-                if (blockData == null) {
-                    blockData = access.byepregen$yaLightData(LightLayer.BLOCK);
-                }
-                blockData.loadInitialSection(sectionY, YANibbleArray.fromOwnedBytes(sectionTag.getByteArray("BlockLight")));
-            }
-            if (hasSkyLight && sectionTag.contains("SkyLight", 7)) {
-                if (skyData == null) {
-                    skyData = access.byepregen$yaLightData(LightLayer.SKY);
-                }
-                skyData.loadInitialSection(sectionY, YANibbleArray.fromOwnedBytes(sectionTag.getByteArray("SkyLight")));
-            }
+    private static void byepregen$installCaptured(
+            YAChunkLightAccess access,
+            LightLayer layer,
+            it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap<DataLayer> captured) {
+        if (captured.isEmpty()) {
+            return;
         }
-        if (blockData != null) {
-            blockData.finishInitialLoad();
+        YAChunkLightData data = access.byepregen$yaLightData(layer);
+        for (it.unimi.dsi.fastutil.ints.Int2ObjectMap.Entry<DataLayer> entry : captured.int2ObjectEntrySet()) {
+            data.loadInitialSection(entry.getIntKey(), YANibbleArray.fromVanilla(entry.getValue()));
         }
-        if (skyData != null) {
-            skyData.finishInitialLoad();
-        }
+        data.finishInitialLoad();
     }
 }

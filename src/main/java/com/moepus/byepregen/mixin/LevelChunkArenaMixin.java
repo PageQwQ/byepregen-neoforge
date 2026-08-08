@@ -11,15 +11,20 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.Unique;
 
 @Mixin(value = LevelChunk.class, remap = false)
 public abstract class LevelChunkArenaMixin {
     @Inject(
-            method = "<init>(Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/level/chunk/ProtoChunk;Lnet/minecraft/world/level/chunk/LevelChunk$PostLoadProcessor;)V",
+            method = "<init>",
             at = @At("RETURN")
     )
-    private void byepregen$materializeArenaSections(
-            ServerLevel level, ProtoChunk protoChunk, @Nullable LevelChunk.PostLoadProcessor postLoad, CallbackInfo ci) {
+    private void byepregen$materializeArenaSections(CallbackInfo ci) {
+        byepregen$materializeIfNeeded();
+    }
+
+    @Unique
+    private void byepregen$materializeIfNeeded() {
         Config config = ConfigParser.getConfig();
         if (!config.enableArenaPalette) {
             return;

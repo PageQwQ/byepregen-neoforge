@@ -42,10 +42,10 @@ final class YASkySourcePropagator {
     }
 
     boolean propagateLightSources(ChunkAccess lightChunk, boolean fresh) {
-        int chunkX = lightChunk.getPos().x;
-        int chunkZ = lightChunk.getPos().z;
+        int chunkX = lightChunk.getPos().x();
+        int chunkZ = lightChunk.getPos().z();
         this.sourceCache.centerChunks(chunkX, chunkZ);
-        long chunkKey = ChunkPos.asLong(chunkX, chunkZ);
+        long chunkKey = ChunkPos.pack(chunkX, chunkZ);
         YAChunkLightData data = this.engine.storage.data(lightChunk);
         this.propagateCachedLightSources(chunkKey, data, fresh);
         return true;

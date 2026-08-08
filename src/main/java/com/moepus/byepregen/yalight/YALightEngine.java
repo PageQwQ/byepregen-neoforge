@@ -105,7 +105,7 @@ public final class YALightEngine {
     }
 
     public void setLightEnabled(ChunkPos pos, boolean lightEnabled) {
-        ChunkAccess chunk = (ChunkAccess)this.chunkGetter.getChunkForLighting(pos.x, pos.z);
+        ChunkAccess chunk = (ChunkAccess)this.chunkGetter.getChunkForLighting(pos.x(), pos.z());
         this.setLightEnabled(chunk, lightEnabled);
     }
 
@@ -151,7 +151,7 @@ public final class YALightEngine {
 
     public boolean isCurrentOwner(YAFreshLightRequest request) {
         ChunkPos pos = request.owner().getPos();
-        LightChunk current = this.chunkGetter.getChunkForLighting(pos.x, pos.z);
+        LightChunk current = this.chunkGetter.getChunkForLighting(pos.x(), pos.z());
         return current != null && request.matchesOwner((ChunkAccess)current);
     }
 
@@ -279,7 +279,8 @@ public final class YALightEngine {
         return (YAChunkLightAccess)this.chunkGetter.getChunkForLighting(pos.getX() >> 4, pos.getZ() >> 4);
     }
 
-    public boolean lightOnInSection(SectionPos pos) {
+    public boolean lightOnInColumn(long packedColumnPos) {
+        SectionPos pos = SectionPos.of(packedColumnPos);
         boolean block = this.blockEngine == null || this.blockEngine.lightOnInSection(pos);
         return block && (this.skyEngine == null || this.skyEngine.lightOnInSection(pos));
     }

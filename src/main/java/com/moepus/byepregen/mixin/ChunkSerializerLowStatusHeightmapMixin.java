@@ -3,13 +3,13 @@ package com.moepus.byepregen.mixin;
 import java.util.Set;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
-import net.minecraft.world.level.chunk.storage.ChunkSerializer;
+import net.minecraft.world.level.chunk.storage.SerializableChunkData;
 import net.minecraft.world.level.levelgen.Heightmap;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
-@Mixin(value = ChunkSerializer.class, remap = false)
+@Mixin(value = SerializableChunkData.class, remap = false)
 public abstract class ChunkSerializerLowStatusHeightmapMixin {
     @Redirect(
             method = "read",

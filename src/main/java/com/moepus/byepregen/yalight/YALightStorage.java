@@ -122,7 +122,7 @@ public final class YALightStorage {
     }
 
     public void removeChunk(ChunkPos pos) {
-        YAChunkLightData data = this.existingData(this.chunkAccess(pos.x, pos.z));
+        YAChunkLightData data = this.existingData(this.chunkAccess(pos.x(), pos.z()));
         if (data != null) {
             data.clear();
         }
@@ -148,7 +148,7 @@ public final class YALightStorage {
     }
 
     public static int minLightSection(LevelHeightAccessor level) {
-        return level.getMinSection() - 1;
+        return level.getMinSectionY() - 1;
     }
 
     public static int lightSectionCount(LevelHeightAccessor level) {

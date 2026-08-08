@@ -105,7 +105,7 @@ interface YALightLayerEngine extends LayerLightEventListener {
 
     private boolean cannotUseFreshOwner(YALightQueue.ChunkTask task, YAFreshLightRequest request) {
         ChunkAccess owner = request.owner();
-        ChunkAccess current = this.storage().chunkAccess(owner.getPos().x, owner.getPos().z);
+        ChunkAccess current = this.storage().chunkAccess(owner.getPos().x(), owner.getPos().z());
         return current == null ? task.hasPositionWork() : !request.matchesOwner(current);
     }
 
@@ -122,7 +122,7 @@ interface YALightLayerEngine extends LayerLightEventListener {
 
     @Override
     default void setLightEnabled(ChunkPos pos, boolean lightEnabled) {
-        this.setLightEnabled(this.storage().chunkAccess(pos.x, pos.z), lightEnabled);
+        this.setLightEnabled(this.storage().chunkAccess(pos.x(), pos.z()), lightEnabled);
     }
 
     default void setLightEnabled(ChunkAccess chunk, boolean lightEnabled) {

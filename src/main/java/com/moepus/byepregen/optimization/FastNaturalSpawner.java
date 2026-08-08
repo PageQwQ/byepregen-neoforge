@@ -88,7 +88,7 @@ public final class FastNaturalSpawner {
             return false;
         }
         return c2meTickingChunks == null
-                || c2meTickingChunks.containsKey(ChunkPos.asLong(SectionPos.x(sectionPos), SectionPos.z(sectionPos)));
+                || c2meTickingChunks.containsKey(ChunkPos.pack(SectionPos.x(sectionPos), SectionPos.z(sectionPos)));
     }
 
     @SuppressWarnings("unchecked")
@@ -131,7 +131,7 @@ public final class FastNaturalSpawner {
             this.mob = mob;
             this.category = category;
             this.blockPos = mob.blockPosition();
-            this.chunkGetter.query(ChunkPos.asLong(this.blockPos), this);
+            this.chunkGetter.query(ChunkPos.pack(this.blockPos), this);
         }
 
         @Override

@@ -1,11 +1,11 @@
 package com.moepus.byepregen.PaletteContainer.ArenaPelette.Codecs;
 
+import com.moepus.byepregen.PaletteContainer.ArenaPelette.ArenaBlockStatePalettedContainer;
 import com.moepus.byepregen.PaletteContainer.ByteStreamTag;
 import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.DynamicOps;
-import com.moepus.byepregen.PaletteContainer.ArenaPelette.ArenaBlockStatePalettedContainer;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.world.level.block.state.BlockState;
@@ -20,6 +20,12 @@ public final class StateCodec implements Codec<PalettedContainer<BlockState>> {
 
     @Override
     public <T> DataResult<Pair<PalettedContainer<BlockState>, T>> decode(DynamicOps<T> ops, T input) {
+        if (ops == NbtOps.INSTANCE && input instanceof CompoundTag blockStatesTag) {
+            ArenaBlockStatePalettedContainer arena = NbtReader.read(blockStatesTag);
+            if (arena != null) {
+                return DataResult.success(Pair.of(arena, ops.empty()));
+            }
+        }
         return this.fallback.decode(ops, input);
     }
 

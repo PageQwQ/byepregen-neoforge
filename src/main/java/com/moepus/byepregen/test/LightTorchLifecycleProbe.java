@@ -1,6 +1,5 @@
 package com.moepus.byepregen.test;
 
-import com.moepus.byepregen.gcfree.GcFreeChunkSerializer;
 import com.moepus.byepregen.yalight.YAChunkLightAccess;
 import com.moepus.byepregen.yalight.YAChunkLightData;
 import com.moepus.byepregen.yalight.YANibbleArray;
@@ -111,7 +110,7 @@ final class LightTorchLifecycleProbe {
     private boolean setup() {
         this.y = Math.min(this.level.getHeight(Heightmap.Types.WORLD_SURFACE,
                 CENTER.getMinBlockX() + LOCAL_SOURCE_X, CENTER.getMinBlockZ() + LOCAL_SOURCE_Z) + 8,
-                this.level.getMaxBuildHeight() - 3);
+                this.level.getMaxY() - 3);
         this.source = new BlockPos(CENTER.getMinBlockX() + LOCAL_SOURCE_X, this.y,
                 CENTER.getMinBlockZ() + LOCAL_SOURCE_Z);
         this.secondTorch = this.source.east(4);
@@ -154,7 +153,6 @@ final class LightTorchLifecycleProbe {
         if (this.phase == Phase.STABLE_SAVE_UNLOAD) {
             this.save("saved after stable light", true);
         } else {
-            this.assertGcFreeEligible("before unload");
             this.captureNbt("pre-unload preview", this.phase != Phase.IMMEDIATE_UNLOAD);
         }
         this.startUnload(this.scenario);
@@ -178,7 +176,7 @@ final class LightTorchLifecycleProbe {
     }
 
     private boolean corruptSourceSection() {
-        ChunkAccess chunk = this.level.getChunk(CENTER.x, CENTER.z);
+        ChunkAccess chunk = this.level.getChunk(CENTER.x(), CENTER.z());
         if (!(chunk instanceof YAChunkLightAccess access)) {
             throw this.failure("YA light data is unavailable");
         }
@@ -196,7 +194,7 @@ final class LightTorchLifecycleProbe {
                 | this.source.getX() & 15;
         nibble.setUpdating(sourceIndex, 14);
         nibble.publish();
-        chunk.setUnsaved(true);
+        chunk.markUnsaved();
         this.save("saved source-only corruption", false);
         this.scenario = SCENARIO_COUNT;
         this.reloadPurpose = ReloadPurpose.CORRUPTION;
@@ -295,14 +293,13 @@ final class LightTorchLifecycleProbe {
     }
 
     private void save(String stage, boolean expectNormal) {
-        this.assertGcFreeEligible(stage);
         this.captureNbt(stage, expectNormal);
         this.level.getChunkSource().save(true);
         this.checkpoint = "after save: " + stage;
     }
 
     private void captureNbt(String stage, boolean expectNormal) {
-        ChunkAccess chunk = this.level.getChunk(CENTER.x, CENTER.z);
+        ChunkAccess chunk = this.level.getChunk(CENTER.x(), CENTER.z());
         this.lastNbt = LightTorchNbtProbe.capture(this.level, chunk, this.source);
         LOGGER.info("Torch GC-free NBT preview: stage={} values={}", stage, this.lastNbt);
         if (expectNormal && !this.lastNbt.hasExpectedTorch()) {
@@ -315,13 +312,6 @@ final class LightTorchLifecycleProbe {
         this.reloadProbe.beginUnload(plan);
         this.phase = Phase.WAIT_UNLOAD;
         this.unloadDeadline = System.nanoTime() + UNLOAD_TIMEOUT_NANOS;
-    }
-
-    private void assertGcFreeEligible(String stage) {
-        ChunkAccess chunk = this.level.getChunk(CENTER.x, CENTER.z);
-        if (!GcFreeChunkSerializer.shouldUseGcFree(chunk)) {
-            throw this.failure(stage + ": center chunk is not eligible for GC-free serialization");
-        }
     }
 
     private void clearFixture() {

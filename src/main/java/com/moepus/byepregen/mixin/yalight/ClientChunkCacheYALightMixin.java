@@ -33,7 +33,7 @@ public abstract class ClientChunkCacheYALightMixin implements YAImmediateChunkAc
     @Override
     @Nullable
     public LevelChunk byepregen$getAnyChunkNow(int chunkX, int chunkZ) {
-        long key = ChunkPos.asLong(chunkX, chunkZ);
+        long key = ChunkPos.pack(chunkX, chunkZ);
         if (key == this.byepregen$lightChunkKey0) {
             return this.byepregen$lightChunk0;
         }

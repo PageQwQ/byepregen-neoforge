@@ -7,6 +7,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LightChunkGetter;
+import net.minecraft.world.level.lighting.LightEngine;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
@@ -92,7 +93,7 @@ final class YALightBlockAccess {
         if (!this.isSlow(block)) {
             return level - 1;
         }
-        int opacity = Math.max(1, this.toState(block).getLightBlock(this.level, this.mutablePos.set(x, y, z)));
+        int opacity = Math.max(1, this.toState(block).getLightDampening());
         return Math.max(0, level - opacity);
     }
 
@@ -125,6 +126,6 @@ final class YALightBlockAccess {
         if (this.isSlow(block) && YALightMath.isEmptyShape(state)) {
             return Shapes.empty();
         }
-        return state.getFaceOcclusionShape(this.level, this.mutablePos.set(x, y, z), direction);
+        return LightEngine.getOcclusionShape(state, direction);
     }
 }

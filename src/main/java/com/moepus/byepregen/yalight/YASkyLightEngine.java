@@ -36,7 +36,7 @@ public final class YASkyLightEngine extends SkyLightEngine implements YALightLay
                 this.sourceCache, chunkGetter, levelReader, new BlockPos.MutableBlockPos());
         this.ownerTransfers = new YASkyOwnerTransfers(this::propagateTransferredEdge);
         this.sources = new YASkySourcePropagator(
-                this, this.sourceCache, chunkGetter.getLevel().getMinBuildHeight() - 1);
+                this, this.sourceCache, chunkGetter.getLevel().getMinY() - 1);
     }
 
     @Override
@@ -99,14 +99,14 @@ public final class YASkyLightEngine extends SkyLightEngine implements YALightLay
 
     @Override
     public void propagateFreshLightSources(YAFreshLightRequest request) {
-        this.ownerTransfers.register(request.owner().getPos().toLong());
+        this.ownerTransfers.register(request.owner().getPos().pack());
         YALightLayerEngine.super.propagateFreshLightSources(request);
     }
 
     @Override
     public void clearChunk(ChunkPos pos) {
         YALightLayerEngine.super.clearChunk(pos);
-        this.ownerTransfers.remove(pos.toLong());
+        this.ownerTransfers.remove(pos.pack());
     }
 
     @Override
@@ -208,7 +208,7 @@ public final class YASkyLightEngine extends SkyLightEngine implements YALightLay
     @Override
     public void propagateLightSourcesInternal(ChunkAccess chunk, boolean fresh) {
         if (this.sources.propagateLightSources(chunk, fresh) && fresh) {
-            this.ownerTransfers.markInitialized(chunk.getPos().toLong());
+            this.ownerTransfers.markInitialized(chunk.getPos().pack());
         }
     }
 

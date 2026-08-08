@@ -12,9 +12,10 @@ import net.minecraft.server.level.ServerChunkCache;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
+import net.minecraft.util.profiling.Profiler;
 import net.minecraft.util.profiling.ProfilerFiller;
 import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.GameRules;
+import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.level.NaturalSpawner;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.LevelChunk;
@@ -48,9 +49,6 @@ public abstract class ServerChunkCacheTickChunksMixin {
 
     @Shadow
     private boolean spawnEnemies;
-
-    @Shadow
-    private boolean spawnFriendlies;
 
     @Shadow
     private NaturalSpawner.SpawnState lastSpawnState;
@@ -93,7 +91,7 @@ public abstract class ServerChunkCacheTickChunksMixin {
             return;
         }
 
-        ProfilerFiller profiler = this.level.getProfiler();
+        ProfilerFiller profiler = Profiler.get();
         profiler.push("pollingChunks");
         profiler.push("filteringLoadedChunks");
         this.byepregen$collectTickingChunks();
@@ -116,8 +114,8 @@ public abstract class ServerChunkCacheTickChunksMixin {
             this.lastSpawnState = spawnState;
             profiler.popPush("spawnAndTick");
 
-            boolean doMobSpawning = this.level.getGameRules().getBoolean(GameRules.RULE_DOMOBSPAWNING);
-            int randomTickSpeed = this.level.getGameRules().getInt(GameRules.RULE_RANDOMTICKING);
+            boolean doMobSpawning = this.level.getGameRules().get(GameRules.SPAWN_MOBS);
+            int randomTickSpeed = this.level.getGameRules().get(GameRules.RANDOM_TICK_SPEED);
             boolean tickPersistentMobs = gameTime % 400L == 0L;
             if (activeTickingChunkCount > 0) {
                 RandomSource random = this.level.getRandom();
@@ -137,10 +135,10 @@ public abstract class ServerChunkCacheTickChunksMixin {
 
                     LevelChunk levelChunk = this.byepregen$tickingChunks[this.byepregen$activeTickingChunkIndices[activeIndex]];
                     ChunkPos chunkPos = levelChunk.getPos();
-                    long chunkPosLong = chunkPos.toLong();
+                    long chunkPosLong = chunkPos.pack();
                     levelChunk.incrementInhabitedTime(inhabitedDelta);
                     if (doMobSpawning
-                            && (this.spawnEnemies || this.spawnFriendlies)
+                            && this.spawnEnemies
                             && this.level.getWorldBorder().isWithinBounds(chunkPos)) {
                         this.byepregen$seedChunkCache(levelChunk, ChunkStatus.BIOMES);
                         this.byepregen$seedChunkCache(levelChunk, ChunkStatus.FULL);
@@ -148,9 +146,8 @@ public abstract class ServerChunkCacheTickChunksMixin {
                                 this.level,
                                 levelChunk,
                                 spawnState,
-                                this.spawnFriendlies,
-                                this.spawnEnemies,
-                                tickPersistentMobs);
+                                NaturalSpawner.getFilteredSpawningCategories(
+                                        spawnState, true, this.spawnEnemies, tickPersistentMobs));
                     }
 
                     if (this.level.shouldTickBlocksAt(chunkPosLong)) {
@@ -166,7 +163,7 @@ public abstract class ServerChunkCacheTickChunksMixin {
 
             profiler.popPush("customSpawners");
             if (doMobSpawning) {
-                this.level.tickCustomSpawners(this.spawnEnemies, this.spawnFriendlies);
+                this.level.tickCustomSpawners(this.spawnEnemies);
             }
         }
 
@@ -230,13 +227,13 @@ public abstract class ServerChunkCacheTickChunksMixin {
     @Unique
     private boolean byepregen$shouldSpawnAndTick(LevelChunk chunk) {
         ChunkPos chunkPos = chunk.getPos();
-        return this.level.isNaturalSpawningAllowed(chunkPos)
+        return this.distanceManager.getNaturalSpawnChunkCount() > 0
                 && ((ChunkMapAccessor) this.chunkMap).byepregen$anyPlayerCloseEnoughForSpawning(chunkPos)
-                || this.distanceManager.shouldForceTicks(chunkPos.toLong());
+                || this.distanceManager.inEntityTickingRange(chunkPos.pack());
     }
 
     @Unique
     private void byepregen$seedChunkCache(LevelChunk chunk, ChunkStatus status) {
-        this.storeInCache(chunk.getPos().toLong(), chunk, status);
+        this.storeInCache(chunk.getPos().pack(), chunk, status);
     }
 }

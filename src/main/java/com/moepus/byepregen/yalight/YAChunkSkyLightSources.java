@@ -29,8 +29,8 @@ public final class YAChunkSkyLightSources extends ChunkSkyLightSources {
     private final short[] lowest = new short[AREA];
     public YAChunkSkyLightSources(LevelHeightAccessor level) {
         super(level);
-        this.minY = level.getMinBuildHeight() - 1;
-        int maxCode = level.getMaxBuildHeight() - this.minY;
+        this.minY = level.getMinY() - 1;
+        int maxCode = level.getMaxY() - this.minY;
         if (maxCode >= NO_SOURCE_CODE) {
             throw new IllegalArgumentException("YA sky source height exceeds unsigned short range: " + maxCode);
         }
@@ -205,12 +205,12 @@ public final class YAChunkSkyLightSources extends ChunkSkyLightSources {
     }
 
     private static boolean isEdgeOccluded(BlockGetter level, BlockPos pos1, BlockState state1, BlockPos pos2, BlockState state2) {
-        if (state2.getLightBlock(level, pos2) != 0) {
+        if (state2.getLightDampening() != 0) {
             return true;
         }
 
-        VoxelShape fromShape = LightEngine.getOcclusionShape(level, pos1, state1, Direction.DOWN);
-        VoxelShape toShape = LightEngine.getOcclusionShape(level, pos2, state2, Direction.UP);
+        VoxelShape fromShape = LightEngine.getOcclusionShape(state1, Direction.DOWN);
+        VoxelShape toShape = LightEngine.getOcclusionShape(state2, Direction.UP);
         return Shapes.faceShapeOccludes(fromShape, toShape);
     }
 

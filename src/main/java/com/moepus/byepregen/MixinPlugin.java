@@ -14,23 +14,10 @@ import org.spongepowered.asm.service.MixinService;
 public final class MixinPlugin implements IMixinConfigPlugin {
     private static final String MIXIN_PACKAGE = "com.moepus.byepregen.mixin.";
     private static final String YA_LIGHT_MIXIN_PREFIX = MIXIN_PACKAGE + "yalight.";
-    private static final String GC_FREE_MIXIN_PREFIX = MIXIN_PACKAGE + "gcfree.";
 
-    private static final String C2ME_HOOK_COMPATIBILITY_MIXIN =
-            MIXIN_PACKAGE + "compat.C2MEHookCompatibilityMixin";
-    private static final String ARCHITECTURY_EVENT_ACCESSOR =
-            MIXIN_PACKAGE + "accessor.ArchitecturyEventImplAccessor";
-    private static final String CHUNK_STORAGE_ACCESSOR =
-            MIXIN_PACKAGE + "accessor.ChunkStorageAccessor";
-    private static final String IO_WORKER_PENDING_STORE_ACCESSOR =
-            MIXIN_PACKAGE + "accessor.IOWorkerPendingStoreAccessor";
-    private static final String REGION_FILE_STORAGE_ACCESSOR =
-            MIXIN_PACKAGE + "accessor.RegionFileStorageAccessor";
-    private static final String C2ME_SERIALIZER_ACCESS =
-            "com.ishland.c2me.base.common.registry.SerializerAccess";
     private static final String CHUNK_ACCESS_ARENA_MIXIN = MIXIN_PACKAGE + "ChunkAccessArenaMixin";
     private static final String CHUNK_SERIALIZER_ARENA_READ_MIXIN =
-            MIXIN_PACKAGE + "ChunkSerializerArenaReadMixin";
+            MIXIN_PACKAGE + "PalettedContainerFactoryArenaMixin";
     private static final String LEVEL_CHUNK_ARENA_MIXIN = MIXIN_PACKAGE + "LevelChunkArenaMixin";
     private static final String NOISE_CHUNK_ACCESSOR = MIXIN_PACKAGE + "NoiseChunkAccessor";
     private static final String NOISE_CHUNK_ARENA_MIXIN = MIXIN_PACKAGE + "NoiseChunkArenaMixin";
@@ -40,23 +27,9 @@ public final class MixinPlugin implements IMixinConfigPlugin {
             MIXIN_PACKAGE + "NoiseInterpolatorArenaMixin";
     private static final String NOISE_GENERATOR_ARENA_MIXIN =
             MIXIN_PACKAGE + "NoiseBasedChunkGeneratorArenaMixin";
-    private static final String FASTNOISE_OCL_ARENA_MIXIN =
-            MIXIN_PACKAGE + "compat.FastNoiseOpenCLArenaMixin";
     private static final String VOXY_ARENA_MIXIN =
             MIXIN_PACKAGE + "compat.VoxyWorldConversionFactoryMixin";
 
-    private static final Set<String> GC_FREE_SATELLITE_MIXINS = Set.of(
-            C2ME_HOOK_COMPATIBILITY_MIXIN,
-            ARCHITECTURY_EVENT_ACCESSOR
-    );
-    private static final Set<String> RAW_GC_FREE_MIXINS = Set.of(
-            GC_FREE_MIXIN_PREFIX + "ChunkMapGcFreeSaveMixin",
-            GC_FREE_MIXIN_PREFIX + "ChunkStorageRawMixin",
-            GC_FREE_MIXIN_PREFIX + "IOWorkerRawMixin",
-            CHUNK_STORAGE_ACCESSOR,
-            IO_WORKER_PENDING_STORE_ACCESSOR,
-            REGION_FILE_STORAGE_ACCESSOR
-    );
     private static final Set<String> ARENA_MIXINS = Set.of(
             CHUNK_ACCESS_ARENA_MIXIN,
             CHUNK_SERIALIZER_ARENA_READ_MIXIN,
@@ -66,7 +39,6 @@ public final class MixinPlugin implements IMixinConfigPlugin {
             NOISE_CELL_CACHE_ARENA_MIXIN,
             NOISE_INTERPOLATOR_ARENA_MIXIN,
             NOISE_GENERATOR_ARENA_MIXIN,
-            FASTNOISE_OCL_ARENA_MIXIN,
             VOXY_ARENA_MIXIN
     );
 
@@ -97,31 +69,10 @@ public final class MixinPlugin implements IMixinConfigPlugin {
         if (mixinClassName.startsWith(YA_LIGHT_MIXIN_PREFIX)) {
             return config.enableYALightEngine;
         }
-        if (isGcFreeMixin(mixinClassName)) {
-            return passesGcFreeGate(mixinClassName, config, classExists);
-        }
         if (ARENA_MIXINS.contains(mixinClassName)) {
             return passesArenaGate(mixinClassName, config);
         }
         return true;
-    }
-
-    private static boolean isGcFreeMixin(String mixinClassName) {
-        return mixinClassName.startsWith(GC_FREE_MIXIN_PREFIX)
-                || GC_FREE_SATELLITE_MIXINS.contains(mixinClassName)
-                || RAW_GC_FREE_MIXINS.contains(mixinClassName);
-    }
-
-    private static boolean passesGcFreeGate(
-            String mixinClassName,
-            Config config,
-            Predicate<String> classExists
-    ) {
-        if (!config.enableGcFreeWorldgenSave) {
-            return false;
-        }
-        return !RAW_GC_FREE_MIXINS.contains(mixinClassName)
-                || !classExists.test(C2ME_SERIALIZER_ACCESS);
     }
 
     private static boolean passesArenaGate(String mixinClassName, Config config) {

@@ -3,7 +3,10 @@ package com.moepus.byepregen.mixin;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.WorldGenRegion;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.LevelAccessor;
+import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.ScheduledTickAccess;
 import net.minecraft.world.level.block.LeavesBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.Fluids;
@@ -17,11 +20,13 @@ public abstract class LeavesBlockWorldgenTickMixin {
     @Inject(method = "updateShape", at = @At("HEAD"), cancellable = true)
     private void c6c$skipStableWorldgenLeafTick(
             final BlockState state,
-            final Direction direction,
-            final BlockState neighborState,
-            final LevelAccessor level,
+            final LevelReader level,
+            final ScheduledTickAccess scheduledTickAccess,
             final BlockPos pos,
+            final Direction direction,
             final BlockPos neighborPos,
+            final BlockState neighborState,
+            final RandomSource random,
             final CallbackInfoReturnable<BlockState> cir
     ) {
         if (!(level instanceof final WorldGenRegion worldGenRegion)) {
@@ -29,7 +34,7 @@ public abstract class LeavesBlockWorldgenTickMixin {
         }
 
         if (state.getValue(LeavesBlock.WATERLOGGED)) {
-            level.scheduleTick(pos, Fluids.WATER, Fluids.WATER.getTickDelay(level));
+            scheduledTickAccess.scheduleTick(pos, Fluids.WATER, Fluids.WATER.getTickDelay(level));
         }
 
         cir.setReturnValue(state);

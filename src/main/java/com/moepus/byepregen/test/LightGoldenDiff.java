@@ -29,7 +29,14 @@ public final class LightGoldenDiff {
     private static final String BLOCK_LIGHT = "BlockLight";
     private static final String SKY_LIGHT = "SkyLight";
     private static final String[] LIGHT_KEYS = {BLOCK_LIGHT, SKY_LIGHT};
-    private static final RegionStorageInfo REGION_INFO = new RegionStorageInfo("light-golden-diff", Level.OVERWORLD, "chunk");
+    private static final RegionStorageInfo REGION_INFO = new RegionStorageInfo("light-golden-diff", byepregen$overworldKey(), "chunk");
+    @SuppressWarnings("unchecked")
+    private static net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> byepregen$overworldKey() {
+        return (net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level>) (net.minecraft.resources.ResourceKey<?>)
+                net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION,
+                        net.minecraft.resources.Identifier.withDefaultNamespace("overworld"));
+    }
+
 
     private LightGoldenDiff() {
     }
@@ -40,9 +47,13 @@ public final class LightGoldenDiff {
             System.err.println("Example: gradlew diffLightGolden -PbyepregenLightGoldenExpectedWorld=run/light-golden/vanilla/world -PbyepregenLightGoldenActualWorld=run/light-golden/ya/world");
             System.exit(2);
         }
+        System.exit(runDiffFromProperties(args[0], args[1]));
+    }
 
-        Path expectedWorld = Paths.get(args[0]).toAbsolutePath().normalize();
-        Path actualWorld = Paths.get(args[1]).toAbsolutePath().normalize();
+    /** In-game entry point: compares two saved worlds using the standard system properties. */
+    public static int runDiffFromProperties(String expectedWorldPath, String actualWorldPath) throws java.io.IOException {
+        Path expectedWorld = Paths.get(expectedWorldPath).toAbsolutePath().normalize();
+        Path actualWorld = Paths.get(actualWorldPath).toAbsolutePath().normalize();
         int maxMismatches = Integer.getInteger("byepregen.lightGolden.maxMismatches", 50);
         int minComparedLayers = Integer.getInteger("byepregen.lightGolden.minComparedLayers", 1);
         boolean missingAsZero = Boolean.getBoolean("byepregen.lightGolden.missingAsZero");
@@ -50,9 +61,7 @@ public final class LightGoldenDiff {
         ChunkBounds chunkBounds = ChunkBounds.fromProperties();
         DiffResult result = compareWorlds(expectedWorld, actualWorld, maxMismatches, minComparedLayers, missingAsZero, chunkBounds);
         result.print(expectedWorld, actualWorld);
-        if (result.hasFailures()) {
-            System.exit(1);
-        }
+        return result.hasFailures() ? 1 : 0;
     }
 
     private static DiffResult compareWorlds(
@@ -138,7 +147,7 @@ public final class LightGoldenDiff {
             Map<ChunkKey, ChunkLights> actualWorldChunks) {
         for (int dz = -1; dz <= 1; ++dz) {
             for (int dx = -1; dx <= 1; ++dx) {
-                ChunkKey key = new ChunkKey(center.x + dx, center.z + dz);
+                ChunkKey key = new ChunkKey(center.x() + dx, center.z() + dz);
                 ChunkLights expected = expectedWorldChunks.get(key);
                 ChunkLights actual = actualWorldChunks.get(key);
                 if (expected == null || actual == null) {
@@ -148,6 +157,17 @@ public final class LightGoldenDiff {
                     continue;
                 }
                 if (!expected.sameTerrain(actual)) {
+                    System.out.println("DEBUG terrain differs at chunk " + key + " sections expected="
+                            + expected.blocks.keySet() + " actual=" + actual.blocks.keySet());
+                    for (int sy : expected.blocks.keySet()) {
+                        SectionBlocks eb = expected.blockSection(sy);
+                        SectionBlocks ab = actual.blockSection(sy);
+                        if (!eb.sameTerrain(ab)) {
+                            System.out.println("DEBUG section " + sy + " expected states: "
+                                    + eb.stateAt(0) + " / " + eb.stateAt(100) + " / " + eb.stateAt(2048)
+                                    + "  actual: " + ab.stateAt(0) + " / " + ab.stateAt(100) + " / " + ab.stateAt(2048));
+                        }
+                    }
                     return false;
                 }
             }
@@ -161,7 +181,7 @@ public final class LightGoldenDiff {
             Map<ChunkKey, ChunkLights> actualWorldChunks) {
         for (int dz = -1; dz <= 1; ++dz) {
             for (int dx = -1; dx <= 1; ++dx) {
-                ChunkKey key = new ChunkKey(center.x + dx, center.z + dz);
+                ChunkKey key = new ChunkKey(center.x() + dx, center.z() + dz);
                 ChunkLights expected = expectedWorldChunks.get(key);
                 ChunkLights actual = actualWorldChunks.get(key);
                 if (expected == null || actual == null) {
@@ -211,14 +231,14 @@ public final class LightGoldenDiff {
         try (RegionFile regionFile = new RegionFile(REGION_INFO, regionPath, regionPath.getParent(), false)) {
             for (int localZ = 0; localZ < 32; ++localZ) {
                 for (int localX = 0; localX < 32; ++localX) {
-                    ChunkPos pos = new ChunkPos(region.x * 32 + localX, region.z * 32 + localZ);
+                    ChunkPos pos = new ChunkPos(region.x() * 32 + localX, region.z() * 32 + localZ);
                     DataInputStream input = regionFile.getChunkDataInputStream(pos);
                     if (input == null) {
                         continue;
                     }
                     try (input) {
                         CompoundTag chunkTag = NbtIo.read(input, NbtAccounter.unlimitedHeap());
-                        chunks.put(new ChunkKey(pos.x, pos.z), ChunkLights.from(chunkTag));
+                        chunks.put(new ChunkKey(pos.x(), pos.z()), ChunkLights.from(chunkTag));
                     }
                 }
             }
@@ -295,9 +315,9 @@ public final class LightGoldenDiff {
         if (diff == null) {
             return describeLayer(regionKey, chunkKey, key) + " differs";
         }
-        int worldX = (chunkKey.x << 4) + diff.localX();
+        int worldX = (chunkKey.x() << 4) + diff.localX();
         int worldY = (key.sectionY << 4) + diff.localY();
-        int worldZ = (chunkKey.z << 4) + diff.localZ();
+        int worldZ = (chunkKey.z() << 4) + diff.localZ();
         return describeLayer(regionKey, chunkKey, key)
                 + " differs at byte=" + diff.byteIndex
                 + " nibble=" + (diff.half == 0 ? "low" : "high")
@@ -377,9 +397,9 @@ public final class LightGoldenDiff {
     private static String describeContext(
             ChunkKey chunkKey, SectionLight key, NibbleDiff diff, ChunkLights expected, ChunkLights actual,
             Map<ChunkKey, ChunkLights> expectedWorldChunks, Map<ChunkKey, ChunkLights> actualWorldChunks) {
-        int worldX = (chunkKey.x << 4) + diff.localX();
+        int worldX = (chunkKey.x() << 4) + diff.localX();
         int worldY = (key.sectionY << 4) + diff.localY();
-        int worldZ = (chunkKey.z << 4) + diff.localZ();
+        int worldZ = (chunkKey.z() << 4) + diff.localZ();
         return "blocks expected" + blockNeighborhood(expectedWorldChunks, worldX, worldY, worldZ)
                 + " actual" + blockNeighborhood(actualWorldChunks, worldX, worldY, worldZ)
                 + " light expected" + lightNeighborhood(expectedWorldChunks, key.layer, worldX, worldY, worldZ)
@@ -543,18 +563,18 @@ public final class LightGoldenDiff {
 
         static ChunkLights from(CompoundTag chunkTag) {
             ChunkLights lights = new ChunkLights();
-            lights.lightCorrect = chunkTag.getBoolean("isLightOn");
-            lights.status = chunkTag.getString("Status");
-            ListTag sections = chunkTag.getList("sections", 10);
+            lights.lightCorrect = chunkTag.getBooleanOr("isLightOn", false);
+            lights.status = chunkTag.getStringOr("Status", "");
+            ListTag sections = chunkTag.getListOrEmpty("sections");
             for (int i = 0; i < sections.size(); ++i) {
-                CompoundTag section = sections.getCompound(i);
-                int sectionY = section.getByte("Y");
-                if (section.contains("block_states", 10)) {
-                    lights.blocks.put(sectionY, SectionBlocks.from(section.getCompound("block_states")));
+                CompoundTag section = sections.getCompoundOrEmpty(i);
+                int sectionY = section.getByteOr("Y", (byte)0);
+                if (section.contains("block_states")) {
+                    lights.blocks.put(sectionY, SectionBlocks.from(section.getCompoundOrEmpty("block_states")));
                 }
                 for (String lightKey : LIGHT_KEYS) {
-                    if (section.contains(lightKey, 7)) {
-                        lights.lights.put(new SectionLight(sectionY, lightKey), section.getByteArray(lightKey));
+                    if (section.contains(lightKey)) {
+                        lights.lights.put(new SectionLight(sectionY, lightKey), section.getByteArray(lightKey).orElse(new byte[0]));
                     }
                 }
             }
@@ -673,20 +693,20 @@ public final class LightGoldenDiff {
         }
 
         static SectionBlocks from(CompoundTag tag) {
-            ListTag paletteTags = tag.getList("palette", 10);
+            ListTag paletteTags = tag.getListOrEmpty("palette");
             if (paletteTags.isEmpty()) {
                 return MISSING;
             }
             String[] palette = new String[paletteTags.size()];
             for (int i = 0; i < palette.length; ++i) {
-                palette[i] = stateName(paletteTags.getCompound(i));
+                palette[i] = stateName(paletteTags.getCompoundOrEmpty(i));
             }
-            if (!tag.contains("data", 12)) {
+            if (!tag.contains("data")) {
                 return new SectionBlocks(palette, null);
             }
             int bits = Math.max(4, ceilLog2(palette.length));
             try {
-                return new SectionBlocks(palette, new SimpleBitStorage(bits, 4096, tag.getLongArray("data")));
+                return new SectionBlocks(palette, new SimpleBitStorage(bits, 4096, tag.getLongArray("data").orElse(new long[0])));
             } catch (RuntimeException exception) {
                 return new SectionBlocks(new String[]{"invalid-storage:" + exception.getMessage()}, null);
             }
@@ -717,12 +737,12 @@ public final class LightGoldenDiff {
         }
 
         private static String stateName(CompoundTag stateTag) {
-            String name = stateTag.getString("Name");
-            if (!stateTag.contains("Properties", 10)) {
+            String name = stateTag.getStringOr("Name", "");
+            if (!stateTag.contains("Properties")) {
                 return name;
             }
-            CompoundTag properties = stateTag.getCompound("Properties");
-            TreeSet<String> keys = new TreeSet<>(properties.getAllKeys());
+            CompoundTag properties = stateTag.getCompoundOrEmpty("Properties");
+            TreeSet<String> keys = new TreeSet<>(properties.keySet());
             StringBuilder builder = new StringBuilder(name).append('[');
             boolean first = true;
             for (String key : keys) {
@@ -730,7 +750,7 @@ public final class LightGoldenDiff {
                     builder.append(',');
                 }
                 first = false;
-                builder.append(key).append('=').append(properties.getString(key));
+                builder.append(key).append('=').append(properties.getStringOr(key, ""));
             }
             return builder.append(']').toString();
         }

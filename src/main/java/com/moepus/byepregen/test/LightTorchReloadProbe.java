@@ -2,7 +2,6 @@ package com.moepus.byepregen.test;
 
 import com.moepus.byepregen.mixin.ChunkMapAccessor;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -13,8 +12,8 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 
 final class LightTorchReloadProbe {
-    private static final TicketType<ChunkPos> TEST_TICKET =
-            TicketType.create("torch_lifecycle_probe", Comparator.comparingLong(ChunkPos::toLong));
+    private static final TicketType TEST_TICKET =
+            new TicketType(TicketType.NO_TIMEOUT, TicketType.FLAG_LOADING);
     private static final int[][] CENTER_FIRST = {
             {0, 0}, {0, -1}, {-1, 0}, {1, 0}, {0, 1}, {-1, -1}, {1, -1}, {-1, 1}, {1, 1}
     };
@@ -44,7 +43,7 @@ final class LightTorchReloadProbe {
     void loadAll() {
         for (int dz = -1; dz <= 1; ++dz) {
             for (int dx = -1; dx <= 1; ++dx) {
-                this.load(new ChunkPos(this.center.x + dx, this.center.z + dz));
+                this.load(new ChunkPos(this.center.x() + dx, this.center.z() + dz));
             }
         }
     }
@@ -56,7 +55,7 @@ final class LightTorchReloadProbe {
             if (retainCenter && pos.equals(this.center)) {
                 continue;
             }
-            this.level.getChunkSource().removeRegionTicket(TEST_TICKET, pos, 0, pos);
+            this.level.getChunkSource().removeTicketWithRadius(TEST_TICKET, pos, 0);
             this.forced.remove(pos);
             this.unloading.add(pos);
         }
@@ -65,8 +64,8 @@ final class LightTorchReloadProbe {
     boolean isUnloaded() {
         var pending = ((ChunkMapAccessor)this.level.getChunkSource().chunkMap).byepregen$getPendingUnloads();
         for (ChunkPos pos : this.unloading) {
-            if (this.level.getChunkSource().getChunkNow(pos.x, pos.z) != null
-                    || pending.containsKey(pos.toLong())) {
+            if (this.level.getChunkSource().getChunkNow(pos.x(), pos.z()) != null
+                    || pending.containsKey(pos.pack())) {
                 return false;
             }
         }
@@ -82,7 +81,7 @@ final class LightTorchReloadProbe {
         };
         List<ChunkPos> chunks = new ArrayList<>(offsets.length);
         for (int[] offset : offsets) {
-            chunks.add(new ChunkPos(this.center.x + offset[0], this.center.z + offset[1]));
+            chunks.add(new ChunkPos(this.center.x() + offset[0], this.center.z() + offset[1]));
         }
         this.order = chunks;
         this.loadIndex = 0;
@@ -102,7 +101,7 @@ final class LightTorchReloadProbe {
     }
 
     boolean centerLoaded() {
-        return this.level.getChunkSource().getChunkNow(this.center.x, this.center.z) != null;
+        return this.level.getChunkSource().getChunkNow(this.center.x(), this.center.z()) != null;
     }
 
     CompletableFuture<Void> waitForLight() {
@@ -118,7 +117,7 @@ final class LightTorchReloadProbe {
         int index = 0;
         for (int dz = -1; dz <= 1; ++dz) {
             for (int dx = -1; dx <= 1; ++dx) {
-                futures[index++] = this.wait(new ChunkPos(this.center.x + dx, this.center.z + dz));
+                futures[index++] = this.wait(new ChunkPos(this.center.x() + dx, this.center.z() + dz));
             }
         }
         return CompletableFuture.allOf(futures);
@@ -129,12 +128,12 @@ final class LightTorchReloadProbe {
     }
 
     private CompletableFuture<?> wait(ChunkPos pos) {
-        return this.level.getChunkSource().getLightEngine().waitForPendingTasks(pos.x, pos.z);
+        return this.level.getChunkSource().getLightEngine().waitForPendingTasks(pos.x(), pos.z());
     }
 
     private void load(ChunkPos pos) {
         this.forced.add(pos);
-        this.level.getChunkSource().addRegionTicket(TEST_TICKET, pos, 0, pos);
-        this.level.getChunkSource().getChunk(pos.x, pos.z, ChunkStatus.FULL, true);
+        this.level.getChunkSource().addTicketWithRadius(TEST_TICKET, pos, 0);
+        this.level.getChunkSource().getChunk(pos.x(), pos.z(), ChunkStatus.FULL, true);
     }
 }

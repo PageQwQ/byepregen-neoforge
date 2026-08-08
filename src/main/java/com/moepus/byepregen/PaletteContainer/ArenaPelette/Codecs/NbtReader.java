@@ -8,7 +8,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
@@ -23,13 +23,13 @@ public final class NbtReader {
     }
 
     public static ArenaBlockStatePalettedContainer read(CompoundTag blockStatesTag) {
-        int[] paletteRawIds = readPaletteRawIds(blockStatesTag.getList(PALETTE, Tag.TAG_COMPOUND));
+        int[] paletteRawIds = readPaletteRawIds(blockStatesTag.getListOrEmpty(PALETTE));
         if (paletteRawIds == null) {
             return null;
         }
 
-        long[] packedStorage = blockStatesTag.contains(DATA, Tag.TAG_LONG_ARRAY)
-                ? blockStatesTag.getLongArray(DATA)
+        long[] packedStorage = blockStatesTag.contains(DATA)
+                ? blockStatesTag.getLongArray(DATA).orElse(null)
                 : null;
         ArenaBlockStatePalettedContainer container = new ArenaBlockStatePalettedContainer();
         return container.importVanillaPackedRawIds(paletteRawIds, packedStorage) ? container : null;
@@ -45,7 +45,7 @@ public final class NbtReader {
     private static int[] readPaletteRawIds(ListTag paletteTag, PaletteReadCache cache) {
         int[] rawIds = new int[paletteTag.size()];
         for (int i = 0; i < rawIds.length; ++i) {
-            BlockState state = readState(paletteTag.getCompound(i), cache);
+            BlockState state = readState(paletteTag.getCompoundOrEmpty(i), cache);
             if (state == null) {
                 return null;
             }
@@ -60,19 +60,19 @@ public final class NbtReader {
     }
 
     private static BlockState readState(CompoundTag stateTag, PaletteReadCache cache) {
-        Block block = cache.readBlock(stateTag.getString(NAME));
+        Block block = cache.readBlock(stateTag.getStringOr(NAME, ""));
         if (block == null) {
             return null;
         }
 
         BlockState state = block.defaultBlockState();
-        if (!stateTag.contains(PROPERTIES, Tag.TAG_COMPOUND)) {
+        if (!stateTag.contains(PROPERTIES)) {
             return state;
         }
 
-        CompoundTag properties = stateTag.getCompound(PROPERTIES);
-        for (String key : properties.getAllKeys()) {
-            state = setProperty(state, key, properties.getString(key), cache);
+        CompoundTag properties = stateTag.getCompoundOrEmpty(PROPERTIES);
+        for (String key : properties.keySet()) {
+            state = setProperty(state, key, properties.getStringOr(key, ""), cache);
             if (state == null) {
                 return null;
             }
@@ -116,12 +116,12 @@ public final class NbtReader {
                 }
             }
 
-            ResourceLocation id = ResourceLocation.tryParse(name);
+            Identifier id = Identifier.tryParse(name);
             if (id == null || !BuiltInRegistries.BLOCK.containsKey(id)) {
                 return null;
             }
 
-            Block value = BuiltInRegistries.BLOCK.get(id);
+            Block value = BuiltInRegistries.BLOCK.get(id).map(net.minecraft.core.Holder::value).orElse(null);
             if (blocks == null) {
                 blocks = new HashMap<>();
                 this.blocksByName = blocks;

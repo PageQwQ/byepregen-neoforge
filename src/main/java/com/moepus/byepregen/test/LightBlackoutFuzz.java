@@ -153,7 +153,7 @@ final class LightBlackoutFuzz {
         var chunkSource = this.level.getChunkSource();
         var pending = ((ChunkMapAccessor)chunkSource.chunkMap).byepregen$getPendingUnloads();
         for (ChunkPos chunk : ROUND_TRIP_CHUNKS) {
-            if (chunkSource.getChunkNow(chunk.x, chunk.z) != null || pending.containsKey(chunk.toLong())) {
+            if (chunkSource.getChunkNow(chunk.x(), chunk.z()) != null || pending.containsKey(chunk.pack())) {
                 return false;
             }
         }
@@ -181,7 +181,7 @@ final class LightBlackoutFuzz {
 
     private void releaseForcedChunks() {
         for (ChunkPos chunk : this.forcedThisRound) {
-            this.level.setChunkForced(chunk.x, chunk.z, false);
+            this.level.setChunkForced(chunk.x(), chunk.z(), false);
         }
         this.forcedThisRound.clear();
     }
@@ -318,10 +318,10 @@ final class LightBlackoutFuzz {
     private void loadNeighborhood(ChunkPos center) {
         for (int dz = -1; dz <= 1; ++dz) {
             for (int dx = -1; dx <= 1; ++dx) {
-                ChunkPos chunk = new ChunkPos(center.x + dx, center.z + dz);
+                ChunkPos chunk = new ChunkPos(center.x() + dx, center.z() + dz);
                 if (this.forcedThisRound.add(chunk)) {
-                    this.level.setChunkForced(chunk.x, chunk.z, true);
-                    this.level.getChunk(chunk.x, chunk.z);
+                    this.level.setChunkForced(chunk.x(), chunk.z(), true);
+                    this.level.getChunk(chunk.x(), chunk.z());
                 }
             }
         }
@@ -358,7 +358,7 @@ final class LightBlackoutFuzz {
     }
 
     private int findRoofY() {
-        int highest = this.level.getMinBuildHeight();
+        int highest = this.level.getMinY();
         for (int chunkZ = MIN_CHUNK; chunkZ <= MAX_CHUNK; ++chunkZ) {
             for (int chunkX = MIN_CHUNK; chunkX <= MAX_CHUNK; ++chunkX) {
                 int x = (chunkX << 4) + 8;
@@ -366,7 +366,7 @@ final class LightBlackoutFuzz {
                 highest = Math.max(highest, this.level.getHeight(Heightmap.Types.WORLD_SURFACE, x, z));
             }
         }
-        return Math.min(highest + TEST_HEIGHT_ABOVE_TERRAIN, this.level.getMaxBuildHeight() - 2);
+        return Math.min(highest + TEST_HEIGHT_ABOVE_TERRAIN, this.level.getMaxY() - 2);
     }
 
     private int light(LightLayer layer, BlockPos pos) {
@@ -390,7 +390,7 @@ final class LightBlackoutFuzz {
     }
 
     private LightChunkSnapshot snapshot(ChunkPos pos) {
-        this.level.getChunk(pos.x, pos.z);
+        this.level.getChunk(pos.x(), pos.z());
         return LightChunkSnapshot.capture(this.level, pos);
     }
 

@@ -12,7 +12,9 @@ import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.GlobalPalette;
 import net.minecraft.world.level.chunk.LevelChunkSection;
 import net.minecraft.world.level.chunk.Palette;
+import net.minecraft.world.level.chunk.PaletteResize;
 import net.minecraft.world.level.chunk.PalettedContainer;
+import net.minecraft.world.level.chunk.Strategy;
 
 public final class ArenaSectionMaterializer {
     private static final BlockState AIR = Blocks.AIR.defaultBlockState();
@@ -30,6 +32,10 @@ public final class ArenaSectionMaterializer {
                 ((LevelChunkSectionAccessor) section).byepregen$setStates(materialize(arenaContainer));
             }
         }
+    }
+
+    public static PalettedContainer<BlockState> materializeContainer(ArenaBlockStatePalettedContainer container) {
+        return materialize(container);
     }
 
     private static PalettedContainer<BlockState> materialize(ArenaBlockStatePalettedContainer container) {
@@ -53,11 +59,7 @@ public final class ArenaSectionMaterializer {
     }
 
     private static PalettedContainer<BlockState> createVanillaSingle(BlockState state) {
-        return new PalettedContainer<>(
-                Block.BLOCK_STATE_REGISTRY,
-                state,
-                PalettedContainer.Strategy.SECTION_STATES
-        );
+        return new PalettedContainer<>(state, Strategy.createForBlockStates(Block.BLOCK_STATE_REGISTRY));
     }
 
     private static PalettedContainer.Data<BlockState> createMaterializedData(
@@ -86,7 +88,7 @@ public final class ArenaSectionMaterializer {
 
         int size = scratch.paletteSize();
         for (int i = 0; i < size; ++i) {
-            palette.idFor(Block.stateById(scratch.paletteRawId(i)));
+            palette.idFor(Block.stateById(scratch.paletteRawId(i)), PaletteResize.noResizeExpected());
         }
     }
 

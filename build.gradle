@@ -2,7 +2,7 @@ plugins {
     id 'java-library'
     id 'maven-publish'
     id 'idea'
-    id 'net.neoforged.moddev' version '2.0.141'
+    id 'net.neoforged.moddev' version '2.0.143'
 }
 
 version = mod_version
@@ -19,6 +19,9 @@ repositories {
     }
     maven {
         url "https://maven.su5ed.dev/releases"
+    }
+    maven {
+        url "https://maven.architectury.dev/"
     }
     maven {
         url "https://jitpack.io"
@@ -49,7 +52,7 @@ base {
     archivesName = mod_id
 }
 
-java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+java.toolchain.languageVersion = JavaLanguageVersion.of(25)
 
 apply from: 'gradle/byepregen-test-runs.gradle'
 
@@ -57,10 +60,6 @@ neoForge {
     // Specify the version of NeoForge to use.
     version = project.neo_version
 
-    parchment {
-        mappingsVersion = project.parchment_mappings_version
-        minecraftVersion = project.parchment_minecraft_version
-    }
     accessTransformers.from('src/main/resources/META-INF/accesstransformer.cfg')
 
     // Default run configurations.
@@ -89,7 +88,7 @@ neoForge {
         }
 
         data {
-            data()
+            clientData()
 
             // example of overriding the workingDirectory set in configureEach above, uncomment if you want to use it
             // gameDirectory = project.file('run-data')
@@ -161,35 +160,29 @@ def mixinSquaredCommon = "com.github.bawnorton.mixinsquared:mixinsquared-common:
 def mixinSquaredNeoForge = "com.github.bawnorton.mixinsquared:mixinsquared-neoforge:${mixinSquaredVersion}"
 
 dependencies {
-    implementation "curse.maven:zfastnoise-1460602:8294347"
     compileOnly mixinSquaredCommon
     annotationProcessor mixinSquaredCommon
     runtimeOnly mixinSquaredNeoForge
     jarJar mixinSquaredNeoForge
-    compileOnly files("libs/c2me-neoforge-base-mc1.21.1-0.4.0-alpha.0.116-all.jar")
-    compileOnly files("libs/c2me-neoforge-rewrites-chunkio-mc1.21.1-0.4.0-alpha.0.116.jar")
-    compileOnly files("libs/c2me-neoforge-rewrites-chunk-system-mc1.21.1-0.4.0-alpha.0.116.jar")
-    compileOnly files("libs/c2me-neoforge-opts-scheduling-mc1.21.1-0.4.0-alpha.0.116.jar")
+    compileOnly files("libs/c2me-neoforge-base-mc26.1.2-0.4.0-alpha.0.96-all.jar")
+    compileOnly files("libs/c2me-neoforge-rewrites-chunkio-mc26.1.2-0.4.0-alpha.0.96.jar")
+    compileOnly files("libs/c2me-neoforge-rewrites-chunk-system-mc26.1.2-0.4.0-alpha.0.96.jar")
+    compileOnly files("libs/c2me-neoforge-opts-scheduling-mc26.1.2-0.4.0-alpha.0.96.jar")
 //    additionalRuntimeClasspath "curse.maven:c2me-ocl-1563823:8436419"
     compileOnly "com.ibm.async:asyncutil:0.1.0"
-    compileOnly files("libs/voxy-0.2.15-beta-3.jar")
-    runtimeOnly "curse.maven:c2me-533097:8480771"
-    runtimeOnly "curse.maven:lithium-360438:7740400"
+    compileOnly files("libs/voxy-0.2.18-beta.jar")
+    runtimeOnly files("libs/c2me-neoforge-mc26.1.2-0.4.0-alpha.0.96.jar")
+    runtimeOnly "curse.maven:lithium-360438:8533275"
     runtimeOnly "net.caffeinemc:sodium-neoforge-api:${sodium_version}+mc${minecraft_version}"
     runtimeOnly files(sodiumDevRuntimeMod.flatMap { it.archiveFile }) {
         builtBy sodiumDevRuntimeMod
     }
-    runtimeOnly "org.sinytra.forgified-fabric-api:fabric-api-base:0.4.42+d1308ded19"
-    runtimeOnly "org.sinytra.forgified-fabric-api:fabric-renderer-api-v1:3.4.1+9125b6dc19"
-    runtimeOnly "org.sinytra.forgified-fabric-api:fabric-rendering-data-attachment-v1:0.3.48+73761d2e19"
-    runtimeOnly "org.sinytra.forgified-fabric-api:fabric-block-view-api-v2:1.0.10+9afaaf8c19"
+    runtimeOnly files("libs/forgified-fabric-api-0.155.2+26.1.2+3.4.4.jar")
 
-    compileOnly "curse.maven:architectury-api-419699:5786327"
+    compileOnly "dev.architectury:architectury-neoforge:20.0.5"
 
-    compileOnly "curse.maven:chunky-pregenerator-forge-485681:6383261"
-    runtimeOnly "curse.maven:chunky-pregenerator-forge-485681:6383261"
-
-    compileOnly "curse.maven:sable-1312371:8263584"
+    compileOnly "curse.maven:chunky-pregenerator-forge-485681:8491618"
+    runtimeOnly "curse.maven:chunky-pregenerator-forge-485681:8491618"
 }
 
 // This block of code expands all declared replace properties in the specified resource targets.
@@ -198,14 +191,10 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
     var replaceProperties = [minecraft_version      : minecraft_version,
                              minecraft_version_range: minecraft_version_range,
                              neo_version            : neo_version,
-                             neo_version_range      : neo_version_range,
-                             loader_version_range   : loader_version_range,
                              mod_id                 : mod_id,
                              mod_name               : mod_name,
                              mod_license            : mod_license,
-                             mod_version            : mod_version,
-                             mod_authors            : mod_authors,
-                             mod_description        : mod_description]
+                             mod_version            : mod_version]
     inputs.properties replaceProperties
     expand replaceProperties
     from "src/main/templates"

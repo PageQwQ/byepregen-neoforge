@@ -72,7 +72,7 @@ public class YAChunkRunCache {
         if (!this.pinOwner(owner)) {
             return false;
         }
-        int index = this.chunkIndex(storage.chunkGetter(), owner.getPos().x, owner.getPos().z);
+        int index = this.chunkIndex(storage.chunkGetter(), owner.getPos().x(), owner.getPos().z());
         YAChunkLightData data = this.writableLightData(storage, index);
         if (data == null) {
             return false;
@@ -219,13 +219,13 @@ public class YAChunkRunCache {
     }
 
     private boolean pinOwner(ChunkAccess owner) {
-        long chunkKey = owner.getPos().toLong();
+        long chunkKey = owner.getPos().pack();
         ChunkAccess existing = this.pinnedOwners.get(chunkKey);
         if (existing != null) {
             return YAFreshLightRequest.sameOwner(existing, owner);
         }
         this.pinnedOwners.put(chunkKey, owner);
-        this.resetChunkWindow(owner.getPos().x, owner.getPos().z);
+        this.resetChunkWindow(owner.getPos().x(), owner.getPos().z());
         return true;
     }
 
@@ -246,7 +246,7 @@ public class YAChunkRunCache {
         }
         int chunkX = this.chunkCenterX + dx;
         int chunkZ = this.chunkCenterZ + dz;
-        ChunkAccess pinned = this.pinnedOwners.get(ChunkPos.asLong(chunkX, chunkZ));
+        ChunkAccess pinned = this.pinnedOwners.get(ChunkPos.pack(chunkX, chunkZ));
         LightChunk chunk = pinned == null ? chunkGetter.getChunkForLighting(chunkX, chunkZ) : pinned;
         this.chunks[index] = chunk == null ? null : (ChunkAccess)chunk;
         this.chunkLoadedMask |= bit;

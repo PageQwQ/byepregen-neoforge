@@ -18,7 +18,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.GameRules;
+import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.Block;
@@ -96,9 +96,9 @@ final class ChunkyWorldGenDriver {
 
     private static void onServerAboutToStart(ServerAboutToStartEvent event) {
         // Smoke tests should measure Chunky-driven worldgen, not vanilla spawn preloading.
-        // Pass null to avoid firing the rule listener before the overworld is constructed.
-        event.getServer().getWorldData().getGameRules().getRule(GameRules.RULE_SPAWN_CHUNK_RADIUS).set(0, null);
-        LOGGER.info("Disabled spawn chunk preloading for ByePregen Chunky worldgen test");
+        // 26.1 removed the spawnChunkRadius game rule entirely, so spawn chunk preloading
+        // can no longer be disabled here; keep only the diagnostic log.
+        LOGGER.info("Spawn chunk preloading is no longer configurable in 26.1 (spawnChunkRadius game rule removed)");
     }
 
     private static void onServerStarted(ServerStartedEvent event) {
@@ -109,6 +109,14 @@ final class ChunkyWorldGenDriver {
         }
         if ("light_fuzz".equals(MODE)) {
             runLightFuzz(server);
+            return;
+        }
+        if ("light_diff".equals(MODE)) {
+            runLightDiff(server);
+            return;
+        }
+        if ("light_prepare_relight".equals(MODE)) {
+            runLightPrepareRelight(server);
             return;
         }
         if (!"chunky".equals(MODE)) {
@@ -180,7 +188,7 @@ final class ChunkyWorldGenDriver {
         long cleanupCompletedNanos = startedNanos;
         try {
             for (ChunkPos pos : chunks) {
-                level.getChunkSource().getChunk(pos.x, pos.z, ChunkStatus.FULL, true);
+                level.getChunkSource().getChunk(pos.x(), pos.z(), ChunkStatus.FULL, true);
                 if (completed + 1 == chunks.size()) {
                     getChunkCompletedNanos = System.nanoTime();
                 }
@@ -244,7 +252,7 @@ final class ChunkyWorldGenDriver {
             return;
         }
         LOGGER.info("Light golden relight progress: world={} progress={} chunks={}/{} chunk=({}, {})",
-                WORLD, completed * 100.0D / total, completed, total, pos.x, pos.z);
+                WORLD, completed * 100.0D / total, completed, total, pos.x(), pos.z());
     }
 
     private static void runLightFuzz(MinecraftServer server) {
@@ -265,6 +273,49 @@ final class ChunkyWorldGenDriver {
 
         LOGGER.info("Started light fuzz: world={} seed={} variant={}", WORLD, LIGHT_FUZZ_SEED, LIGHT_FUZZ_VARIANT);
         lightFuzzRun = new LightFuzzRun(server, level);
+    }
+
+    private static void runLightPrepareRelight(MinecraftServer server) {
+        String sourceWorld = System.getProperty("byepregen.lightGolden.sourceWorld");
+        String targetWorlds = System.getProperty("byepregen.lightGolden.targetWorlds");
+        if (sourceWorld == null || targetWorlds == null) {
+            failAndStop(server, "light_prepare_relight mode requires byepregen.lightGolden.sourceWorld and targetWorlds");
+            return;
+        }
+        String[] targets = targetWorlds.split(",");
+        try {
+            int exitCode = LightGoldenPrepareRelight.runPrepareFromProperties(sourceWorld, targets);
+            if (exitCode != 0) {
+                failAndStop(server, "Light golden relight prepare failed (exit code " + exitCode + ")");
+                return;
+            }
+            LOGGER.info("Light golden relight prepare completed: source={} targets={}", sourceWorld, targets.length);
+            server.executeIfPossible(() -> stopServer(server));
+        } catch (Throwable throwable) {
+            LOGGER.error("Light golden relight prepare failed", throwable);
+            failAndStop(server, "Light golden relight prepare threw: " + throwable);
+        }
+    }
+
+    private static void runLightDiff(MinecraftServer server) {
+        String expectedWorld = System.getProperty("byepregen.lightGolden.expectedWorld");
+        String actualWorld = System.getProperty("byepregen.lightGolden.actualWorld");
+        if (expectedWorld == null || actualWorld == null) {
+            failAndStop(server, "light_diff mode requires byepregen.lightGolden.expectedWorld and actualWorld");
+            return;
+        }
+        try {
+            int exitCode = LightGoldenDiff.runDiffFromProperties(expectedWorld, actualWorld);
+            if (exitCode != 0) {
+                failAndStop(server, "Light golden diff found mismatches (exit code " + exitCode + ")");
+                return;
+            }
+            LOGGER.info("Light golden diff passed: expected={} actual={}", expectedWorld, actualWorld);
+            server.executeIfPossible(() -> stopServer(server));
+        } catch (Throwable throwable) {
+            LOGGER.error("Light golden diff failed", throwable);
+            failAndStop(server, "Light golden diff threw: " + throwable);
+        }
     }
 
     private static List<ChunkPos> loadFuzzChunks(ServerLevel level) {
@@ -393,7 +444,7 @@ final class ChunkyWorldGenDriver {
 
     private static void clearEdgeFuzzVolume(ServerLevel level) {
         BlockState air = Blocks.AIR.defaultBlockState();
-        for (int y = level.getMinBuildHeight(); y < level.getMaxBuildHeight(); ++y) {
+        for (int y = level.getMinY(); y < level.getMaxY(); ++y) {
             for (int x : EDGE_XZ) {
                 for (int z : EDGE_XZ) {
                     put(level, x, y, z, air);
@@ -442,8 +493,8 @@ final class ChunkyWorldGenDriver {
     }
 
     private static void buildEdgeSkyColumns(ServerLevel level) {
-        int bottom = level.getMinBuildHeight();
-        int top = level.getMaxBuildHeight() - 1;
+        int bottom = level.getMinY();
+        int top = level.getMaxY() - 1;
         BlockState stone = Blocks.STONE.defaultBlockState();
         put(level, -1, top, -1, stone);
         put(level, 0, bottom, 0, stone);
@@ -480,8 +531,8 @@ final class ChunkyWorldGenDriver {
     }
 
     private static void mutateEdgeFuzzFixture(ServerLevel level) {
-        int bottom = level.getMinBuildHeight();
-        int top = level.getMaxBuildHeight() - 1;
+        int bottom = level.getMinY();
+        int top = level.getMaxY() - 1;
         put(level, -1, top, -1, Blocks.AIR.defaultBlockState());
         put(level, 0, top, 0, Blocks.STONE.defaultBlockState());
         put(level, 0, bottom, 0, Blocks.AIR.defaultBlockState());
@@ -528,7 +579,7 @@ final class ChunkyWorldGenDriver {
     }
 
     private static void clearStressColumn(ServerLevel level, int x, int z, BlockState state) {
-        for (int y = level.getMinBuildHeight(); y < level.getMaxBuildHeight(); ++y) {
+        for (int y = level.getMinY(); y < level.getMaxY(); ++y) {
             put(level, x, y, z, state);
         }
     }
@@ -540,8 +591,8 @@ final class ChunkyWorldGenDriver {
     }
 
     private static void buildStressSkyColumns(ServerLevel level, Random random) {
-        int bottom = level.getMinBuildHeight();
-        int top = level.getMaxBuildHeight() - 1;
+        int bottom = level.getMinY();
+        int top = level.getMaxY() - 1;
         for (int i = 0; i < 40; ++i) {
             int x = stressXZ(random);
             int z = stressXZ(random);
@@ -584,7 +635,7 @@ final class ChunkyWorldGenDriver {
         BlockState air = Blocks.AIR.defaultBlockState();
         for (int z = DIRTY_COLUMN_MIN; z <= DIRTY_COLUMN_MAX; ++z) {
             for (int x = DIRTY_COLUMN_MIN; x <= DIRTY_COLUMN_MAX; ++x) {
-                for (int y = level.getMinBuildHeight(); y < level.getMaxBuildHeight(); ++y) {
+                for (int y = level.getMinY(); y < level.getMaxY(); ++y) {
                     put(level, x, y, z, air);
                 }
             }
@@ -592,8 +643,8 @@ final class ChunkyWorldGenDriver {
     }
 
     private static void buildDirtyColumnFuzzFixture(ServerLevel level) {
-        int lowY = level.getMinBuildHeight() + DIRTY_COLUMN_HEIGHT_MARGIN;
-        int highY = level.getMaxBuildHeight() - DIRTY_COLUMN_HEIGHT_MARGIN;
+        int lowY = level.getMinY() + DIRTY_COLUMN_HEIGHT_MARGIN;
+        int highY = level.getMaxY() - DIRTY_COLUMN_HEIGHT_MARGIN;
         BlockState stone = Blocks.STONE.defaultBlockState();
         for (int z = DIRTY_COLUMN_MIN; z <= DIRTY_COLUMN_MAX; ++z) {
             for (int x = DIRTY_COLUMN_MIN; x <= DIRTY_COLUMN_MAX; ++x) {
@@ -606,7 +657,7 @@ final class ChunkyWorldGenDriver {
     }
 
     private static void mutateDirtyColumnFuzzFixture(ServerLevel level, int round) {
-        int highY = level.getMaxBuildHeight() - DIRTY_COLUMN_HEIGHT_MARGIN;
+        int highY = level.getMaxY() - DIRTY_COLUMN_HEIGHT_MARGIN;
         BlockState stone = Blocks.STONE.defaultBlockState();
         BlockState air = Blocks.AIR.defaultBlockState();
         int highParity = (round + 1) & 1;
@@ -656,11 +707,11 @@ final class ChunkyWorldGenDriver {
 
     private static int stressY(ServerLevel level, Random random) {
         if (random.nextInt(8) == 0) {
-            return random.nextBoolean() ? level.getMinBuildHeight() : level.getMaxBuildHeight() - 1;
+            return random.nextBoolean() ? level.getMinY() : level.getMaxY() - 1;
         }
-        int section = level.getMinSection() + random.nextInt(level.getSectionsCount());
+        int section = level.getMinSectionY() + random.nextInt(level.getSectionsCount());
         int y = (section << 4) + STRESS_Y_OFFSETS[random.nextInt(STRESS_Y_OFFSETS.length)];
-        return Math.max(level.getMinBuildHeight(), Math.min(level.getMaxBuildHeight() - 1, y));
+        return Math.max(level.getMinY(), Math.min(level.getMaxY() - 1, y));
     }
 
     private static void put(ServerLevel level, int x, int y, int z, BlockState state) {
@@ -671,7 +722,7 @@ final class ChunkyWorldGenDriver {
     }
 
     private static boolean inBuildHeight(ServerLevel level, int y) {
-        return y >= level.getMinBuildHeight() && y < level.getMaxBuildHeight();
+        return y >= level.getMinY() && y < level.getMaxY();
     }
 
     private static boolean inFuzzBlockArea(int x, int z) {
@@ -745,6 +796,17 @@ final class ChunkyWorldGenDriver {
         } catch (Throwable throwable) {
             LOGGER.error("Failed to save ByePregen test world before shutdown", throwable);
         }
+        // C2ME writes chunks on its own storage threads; halt must wait for them to drain,
+        // otherwise the last chunks race the JVM exit and land on disk in their old state.
+        long drainMillis = longProperty("saveDrainSeconds", 5L) * 1000L;
+        if (drainMillis > 0) {
+            LOGGER.info("Waiting {} ms for async storage writes to drain", drainMillis);
+            try {
+                Thread.sleep(drainMillis);
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+            }
+        }
         server.halt(false);
         forceExitIfShutdownStalls();
     }
@@ -792,6 +854,11 @@ final class ChunkyWorldGenDriver {
         return Boolean.parseBoolean(property(name, Boolean.toString(fallback)));
     }
 
+
+    private static boolean hasYALightEngine(ServerLevel level) {
+        return level.getChunkSource().getLightEngine() instanceof YALightEngineHolder;
+    }
+
     private static final class LightFuzzRun {
         private final MinecraftServer server;
         private final ServerLevel level;
@@ -809,7 +876,11 @@ final class ChunkyWorldGenDriver {
             this.server = server;
             this.level = level;
             this.blackoutFuzz = runsBlackoutLightFuzz() ? new LightBlackoutFuzz(level, LIGHT_FUZZ_SEED) : null;
-            this.torchLifecycleProbe = runsBlackoutLightFuzz() ? new LightTorchLifecycleProbe(level) : null;
+            // Torch lifecycle probes corrupt and repair YA-owned light data, so they only
+            // run against a YA light engine; vanilla runs exercise the blackout fuzz itself.
+            this.torchLifecycleProbe = runsBlackoutLightFuzz() && hasYALightEngine(level)
+                    ? new LightTorchLifecycleProbe(level)
+                    : null;
         }
 
         private void tick() {
@@ -895,7 +966,7 @@ final class ChunkyWorldGenDriver {
             CompletableFuture<?>[] futures = new CompletableFuture<?>[this.chunks.size()];
             for (int i = 0; i < this.chunks.size(); ++i) {
                 ChunkPos chunk = this.chunks.get(i);
-                futures[i] = this.level.getChunkSource().getLightEngine().waitForPendingTasks(chunk.x, chunk.z);
+                futures[i] = this.level.getChunkSource().getLightEngine().waitForPendingTasks(chunk.x(), chunk.z());
             }
             this.pendingStage = stageName;
             this.pendingLight = CompletableFuture.allOf(futures);

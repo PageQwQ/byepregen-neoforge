@@ -23,7 +23,14 @@ import java.util.List;
 import java.util.stream.Stream;
 
 public final class LightGoldenPrepareRelight {
-    private static final RegionStorageInfo REGION_INFO = new RegionStorageInfo("light-golden-prepare-relight", Level.OVERWORLD, "chunk");
+    private static final RegionStorageInfo REGION_INFO = new RegionStorageInfo("light-golden-prepare-relight", byepregen$overworldKey(), "chunk");
+    @SuppressWarnings("unchecked")
+    private static net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> byepregen$overworldKey() {
+        return (net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level>) (net.minecraft.resources.ResourceKey<?>)
+                net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION,
+                        net.minecraft.resources.Identifier.withDefaultNamespace("overworld"));
+    }
+
     static final String CHUNK_LIST_FILE = "byepregen-light-golden-chunks.txt";
     private static final double RELIGHT_RADIUS = Double.parseDouble(System.getProperty(
             "byepregen.lightGolden.prepareRadius",
@@ -41,15 +48,21 @@ public final class LightGoldenPrepareRelight {
             System.err.println("Usage: LightGoldenPrepareRelight <source-world-dir> <target-world-dir> <target-world-dir>...");
             System.exit(2);
         }
+        String[] targets = new String[args.length - 1];
+        System.arraycopy(args, 1, targets, 0, targets.length);
+        System.exit(runPrepareFromProperties(args[0], targets));
+    }
 
-        Path sourceWorld = Paths.get(args[0]).toAbsolutePath().normalize();
+    /** In-game entry point: copies the source world and strips light data using the standard system properties. */
+    public static int runPrepareFromProperties(String sourceWorldPath, String[] targetWorldPaths) throws IOException {
+        Path sourceWorld = Paths.get(sourceWorldPath).toAbsolutePath().normalize();
         if (!Files.isDirectory(sourceWorld)) {
             throw new IOException("Source world directory does not exist: " + sourceWorld);
         }
 
-        List<Path> targetWorlds = new ArrayList<>(args.length - 1);
-        for (int i = 1; i < args.length; ++i) {
-            Path targetWorld = Paths.get(args[i]).toAbsolutePath().normalize();
+        List<Path> targetWorlds = new ArrayList<>(targetWorldPaths.length);
+        for (String targetWorldPath : targetWorldPaths) {
+            Path targetWorld = Paths.get(targetWorldPath).toAbsolutePath().normalize();
             copyWorldForRelight(sourceWorld, targetWorld);
             targetWorlds.add(targetWorld);
         }
@@ -58,6 +71,7 @@ public final class LightGoldenPrepareRelight {
         for (Path targetWorld : targetWorlds) {
             System.out.println("  target: " + targetWorld);
         }
+        return 0;
     }
 
     private static void copyWorldForRelight(Path sourceWorld, Path targetWorld) throws IOException {
@@ -117,7 +131,7 @@ public final class LightGoldenPrepareRelight {
         try (RegionFile regionFile = new RegionFile(REGION_INFO, regionPath, regionPath.getParent(), false)) {
             for (int localZ = 0; localZ < 32; ++localZ) {
                 for (int localX = 0; localX < 32; ++localX) {
-                    ChunkPos pos = new ChunkPos(region.x * 32 + localX, region.z * 32 + localZ);
+                    ChunkPos pos = new ChunkPos(region.x() * 32 + localX, region.z() * 32 + localZ);
                     CompoundTag chunkTag;
                     try (DataInputStream input = regionFile.getChunkDataInputStream(pos)) {
                         if (input == null) {
@@ -130,9 +144,9 @@ public final class LightGoldenPrepareRelight {
                         NbtIo.write(chunkTag, output);
                     }
                     if (shouldRelight(pos)) {
-                        chunkList.write(Integer.toString(pos.x));
+                        chunkList.write(Integer.toString(pos.x()));
                         chunkList.write(' ');
-                        chunkList.write(Integer.toString(pos.z));
+                        chunkList.write(Integer.toString(pos.z()));
                         chunkList.newLine();
                         ++relightChunks;
                     }
@@ -144,7 +158,7 @@ public final class LightGoldenPrepareRelight {
     }
 
     private static boolean shouldRelight(ChunkPos pos) {
-        return Math.abs(pos.x) <= RELIGHT_CHUNK_RADIUS && Math.abs(pos.z) <= RELIGHT_CHUNK_RADIUS;
+        return Math.abs(pos.x()) <= RELIGHT_CHUNK_RADIUS && Math.abs(pos.z()) <= RELIGHT_CHUNK_RADIUS;
     }
 
     private static void stripChunkLight(CompoundTag chunkTag) {
@@ -153,9 +167,9 @@ public final class LightGoldenPrepareRelight {
         // stage before the LIGHT task recomputes saved nibbles.
         chunkTag.putString("Status", "minecraft:features");
         chunkTag.remove("isLightOn");
-        ListTag sections = chunkTag.getList("sections", 10);
+        ListTag sections = chunkTag.getListOrEmpty("sections");
         for (int i = 0; i < sections.size(); ++i) {
-            CompoundTag section = sections.getCompound(i);
+            CompoundTag section = sections.getCompoundOrEmpty(i);
             section.remove("BlockLight");
             section.remove("SkyLight");
         }

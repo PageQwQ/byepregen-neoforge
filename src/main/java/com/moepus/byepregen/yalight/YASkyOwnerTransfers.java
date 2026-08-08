@@ -34,7 +34,7 @@ final class YASkyOwnerTransfers {
     void setDeclaredDomain(Iterable<ChunkPos> owners) {
         this.clearPersistentState();
         for (ChunkPos pos : owners) {
-            long ownerKey = pos.toLong();
+            long ownerKey = pos.pack();
             byte state = this.states.get(ownerKey);
             if ((state & DECLARED) == 0) {
                 this.states.put(ownerKey, (byte)(state | DECLARED));

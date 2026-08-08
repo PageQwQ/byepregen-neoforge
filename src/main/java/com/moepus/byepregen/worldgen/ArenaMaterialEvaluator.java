@@ -23,10 +23,8 @@ final class ArenaMaterialEvaluator {
     }
 
     static ArenaMaterialEvaluator create(NoiseChunk.BlockStateFiller rootRule) {
-        if (rootRule instanceof MaterialRuleList(List<NoiseChunk.BlockStateFiller> materialRuleList)) {
-            NoiseChunk.BlockStateFiller[] snapshot = materialRuleList
-                    .toArray(NoiseChunk.BlockStateFiller[]::new);
-            return new ArenaMaterialEvaluator(null, snapshot);
+        if (rootRule instanceof MaterialRuleList(NoiseChunk.BlockStateFiller[] materialRuleList)) {
+            return new ArenaMaterialEvaluator(null, materialRuleList);
         }
         return new ArenaMaterialEvaluator(rootRule, null);
     }

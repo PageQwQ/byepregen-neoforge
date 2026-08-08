@@ -11,8 +11,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.util.Mth;
-import net.minecraft.util.profiling.ProfilerFiller;
-import net.minecraft.world.level.GameRules;
+import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
@@ -33,7 +32,6 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
-import java.util.function.Supplier;
 
 @Mixin(value = ServerLevel.class, remap = false)
 public abstract class ServerLevelWeatherTickMixin extends Level {
@@ -42,12 +40,11 @@ public abstract class ServerLevelWeatherTickMixin extends Level {
             ResourceKey<Level> dimension,
             RegistryAccess registryAccess,
             Holder<DimensionType> dimensionTypeRegistration,
-            Supplier<ProfilerFiller> profiler,
             boolean isClientSide,
             boolean isDebug,
             long biomeZoomSeed,
             int maxChainedNeighborUpdates) {
-        super(levelData, dimension, registryAccess, dimensionTypeRegistration, profiler, isClientSide, isDebug, biomeZoomSeed, maxChainedNeighborUpdates);
+        super(levelData, dimension, registryAccess, dimensionTypeRegistration, isClientSide, isDebug, biomeZoomSeed, maxChainedNeighborUpdates);
     }
 
     @Redirect(
@@ -75,7 +72,7 @@ public abstract class ServerLevelWeatherTickMixin extends Level {
         Biome biome = this.byepregen$getBiome(chunk, surface).value();
         BlockState belowSurfaceState = null;
 
-        if (!biome.warmEnoughToRain(belowSurface)) {
+        if (!biome.warmEnoughToRain(belowSurface, this.getSeaLevel())) {
             belowSurfaceState = chunk.getBlockState(belowSurface);
         }
 
@@ -90,10 +87,10 @@ public abstract class ServerLevelWeatherTickMixin extends Level {
             return;
         }
 
-        int snowAccumulationHeight = this.getGameRules().getInt(GameRules.RULE_SNOW_ACCUMULATION_HEIGHT);
+        int snowAccumulationHeight = ((ServerLevel) (Object) this).getGameRules().get(GameRules.MAX_SNOW_ACCUMULATION_HEIGHT);
         if (snowAccumulationHeight > 0
-                && !biome.warmEnoughToRain(surface)
-                && surface.getY() < this.getMaxBuildHeight()
+                && !biome.warmEnoughToRain(surface, this.getSeaLevel())
+                && surface.getY() < this.getMaxY()
                 && this.getBrightness(LightLayer.BLOCK, surface) < 10) {
             BlockState state = chunk.getBlockState(surface);
 
@@ -116,7 +113,7 @@ public abstract class ServerLevelWeatherTickMixin extends Level {
             }
         }
 
-        Biome.Precipitation precipitation = biome.getPrecipitationAt(belowSurface);
+        Biome.Precipitation precipitation = biome.getPrecipitationAt(belowSurface, this.getSeaLevel());
         if (precipitation != Biome.Precipitation.NONE) {
             if (belowSurfaceState == null) {
                 belowSurfaceState = chunk.getBlockState(belowSurface);
@@ -136,7 +133,7 @@ public abstract class ServerLevelWeatherTickMixin extends Level {
 
     @Unique
     private Holder<Biome> byepregen$getSectionNoiseBiome(LevelChunk chunk, int quartX, int quartY, int quartZ) {
-        int minQuartY = QuartPos.fromBlock(chunk.getMinBuildHeight());
+        int minQuartY = QuartPos.fromBlock(chunk.getMinY());
         int maxQuartY = minQuartY + QuartPos.fromBlock(chunk.getHeight()) - 1;
         int clampedQuartY = Mth.clamp(quartY, minQuartY, maxQuartY);
         LevelChunkSection section = chunk.getSection(chunk.getSectionIndex(QuartPos.toBlock(clampedQuartY)));
@@ -183,10 +180,10 @@ public abstract class ServerLevelWeatherTickMixin extends Level {
     @Unique
     private boolean byepregen$snowCanSurvive(BlockPos pos, BlockState belowState) {
         BlockPos below = pos.below();
-        if (belowState.is(BlockTags.SNOW_LAYER_CANNOT_SURVIVE_ON)) {
+        if (belowState.is(BlockTags.CANNOT_SUPPORT_SNOW_LAYER)) {
             return false;
         }
-        if (belowState.is(BlockTags.SNOW_LAYER_CAN_SURVIVE_ON)) {
+        if (belowState.is(BlockTags.SUPPORT_OVERRIDE_SNOW_LAYER)) {
             return true;
         }
         return Block.isFaceFull(belowState.getCollisionShape(this, below), Direction.UP)
@@ -207,7 +204,7 @@ public abstract class ServerLevelWeatherTickMixin extends Level {
     private LevelChunk byepregen$getChunkForPos(LevelChunk currentChunk, BlockPos pos) {
         int chunkX = SectionPos.blockToSectionCoord(pos.getX());
         int chunkZ = SectionPos.blockToSectionCoord(pos.getZ());
-        if (currentChunk.getPos().x == chunkX && currentChunk.getPos().z == chunkZ) {
+        if (currentChunk.getPos().x() == chunkX && currentChunk.getPos().z() == chunkZ) {
             return currentChunk;
         }
         return this.getChunkSource().getChunkNow(chunkX, chunkZ);
@@ -218,12 +215,12 @@ public abstract class ServerLevelWeatherTickMixin extends Level {
         if (this.captureBlockSnapshots) {
             return this.setBlock(pos, state, 3, 512);
         }
-        if (this.isOutsideBuildHeight(pos) || !this.isClientSide && this.isDebug()) {
+        if (this.isOutsideBuildHeight(pos) || !this.isClientSide() && this.isDebug()) {
             return false;
         }
 
         pos = pos.immutable();
-        BlockState oldState = chunk.setBlockState(pos, state, false);
+        BlockState oldState = chunk.setBlockState(pos, state, 0);
         if (oldState == null) {
             return false;
         }

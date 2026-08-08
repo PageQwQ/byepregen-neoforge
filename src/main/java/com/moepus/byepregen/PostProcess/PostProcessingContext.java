@@ -76,7 +76,7 @@ abstract class PostProcessingContext {
 
     boolean isOutsideBuildHeight(BlockPos pos) {
         int y = pos.getY();
-        return y < chunk.getMinBuildHeight() || y >= chunk.getMaxBuildHeight();
+        return y < chunk.getMinY() || y >= chunk.getMaxY();
     }
 
     abstract BlockState getBlockState(BlockPos pos);
@@ -202,7 +202,7 @@ abstract class PostProcessingContext {
 
         private boolean isWestFull() {
             if (!westChecked) {
-                westChunk = getLoadedFullChunk(chunkPos.x - 1, chunkPos.z);
+                westChunk = getLoadedFullChunk(chunkPos.x() - 1, chunkPos.z());
                 westChecked = true;
             }
             return westChunk != null;
@@ -210,7 +210,7 @@ abstract class PostProcessingContext {
 
         private boolean isEastFull() {
             if (!eastChecked) {
-                eastChunk = getLoadedFullChunk(chunkPos.x + 1, chunkPos.z);
+                eastChunk = getLoadedFullChunk(chunkPos.x() + 1, chunkPos.z());
                 eastChecked = true;
             }
             return eastChunk != null;
@@ -218,7 +218,7 @@ abstract class PostProcessingContext {
 
         private boolean isNorthFull() {
             if (!northChecked) {
-                northChunk = getLoadedFullChunk(chunkPos.x, chunkPos.z - 1);
+                northChunk = getLoadedFullChunk(chunkPos.x(), chunkPos.z() - 1);
                 northChecked = true;
             }
             return northChunk != null;
@@ -226,7 +226,7 @@ abstract class PostProcessingContext {
 
         private boolean isSouthFull() {
             if (!southChecked) {
-                southChunk = getLoadedFullChunk(chunkPos.x, chunkPos.z + 1);
+                southChunk = getLoadedFullChunk(chunkPos.x(), chunkPos.z() + 1);
                 southChecked = true;
             }
             return southChunk != null;

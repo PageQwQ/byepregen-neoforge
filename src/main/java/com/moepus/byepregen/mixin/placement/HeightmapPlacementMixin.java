@@ -17,7 +17,7 @@ public abstract class HeightmapPlacementMixin implements FastPlacementModifier {
     @Override
     public void byepregen$collectPositions(FastPlacementContext context, int x, int y, int z, int nextIndex) {
         int height = context.placementContext().getHeight(this.heightmap, x, z);
-        if (height > context.placementContext().getMinBuildHeight()) {
+        if (height > context.placementContext().getMinY()) {
             context.apply(nextIndex, x, height, z);
         }
     }

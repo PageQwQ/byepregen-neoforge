@@ -180,11 +180,6 @@ public final class NbtWriter implements DataOutput {
         return bytes;
     }
 
-    public RawChunkData toRawChunkData(int maxSlackBytes) {
-        byte[] bytes = this.toByteArray();
-        return new RawChunkData(bytes, bytes.length);
-    }
-
     public void release() {
         if (this.buffer != 0L) {
             UNSAFE.freeMemory(this.buffer);

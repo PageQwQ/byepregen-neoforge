@@ -28,21 +28,21 @@ public final class YALightQueue {
     }
 
     void queueCheck(BlockPos pos) {
-        this.task(ChunkPos.asLong(pos)).addCheck(pos);
+        this.task(ChunkPos.pack(pos)).addCheck(pos);
     }
 
     void queueCheck(long pos) {
-        this.task(ChunkPos.asLong(
+        this.task(ChunkPos.pack(
                 SectionPos.blockToSectionCoord(BlockPos.getX(pos)),
                 SectionPos.blockToSectionCoord(BlockPos.getZ(pos)))).addCheck(pos);
     }
 
     void queueSource(ChunkPos pos) {
-        this.task(pos.toLong()).normalSource = true;
+        this.task(pos.pack()).normalSource = true;
     }
 
     void removeChunk(ChunkPos pos) {
-        ChunkTask task = this.tasks.remove(pos.toLong());
+        ChunkTask task = this.tasks.remove(pos.pack());
         if (task != null) {
             task.cancelFreshSources(this.layer);
             this.unlink(task);
@@ -58,7 +58,7 @@ public final class YALightQueue {
     }
 
     void queueFreshSource(YAFreshLightRequest request) {
-        this.task(request.owner().getPos().toLong()).addFreshOwner(request, this.layer);
+        this.task(request.owner().getPos().pack()).addFreshOwner(request, this.layer);
     }
 
     void collectSourceHalo(YASourceHalo halo, byte layerMask) {
@@ -76,7 +76,7 @@ public final class YALightQueue {
                         if (dx == 0 && dz == 0 && !task.hasPositionWork()) {
                             continue;
                         }
-                        halo.add(ChunkPos.asLong(chunkX + dx, chunkZ + dz), layerMask);
+                        halo.add(ChunkPos.pack(chunkX + dx, chunkZ + dz), layerMask);
                     }
                 }
             }

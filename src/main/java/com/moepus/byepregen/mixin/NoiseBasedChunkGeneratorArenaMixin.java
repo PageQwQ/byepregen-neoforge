@@ -42,9 +42,9 @@ public abstract class NoiseBasedChunkGeneratorArenaMixin {
             method = "fillFromNoise",
             at = @At(
                     value = "INVOKE",
-                    target = "Lnet/minecraft/Util;wrapThreadWithTaskName(Ljava/lang/String;Ljava/util/function/Supplier;)Ljava/util/function/Supplier;"
+                    target = "Ljava/util/concurrent/CompletableFuture;supplyAsync(Ljava/util/function/Supplier;Ljava/util/concurrent/Executor;)Ljava/util/concurrent/CompletableFuture;"
             ),
-            index = 1
+            index = 0
     )
     private Supplier<ChunkAccess> byepregen$replaceNoiseSupplier(
             Supplier<ChunkAccess> original,

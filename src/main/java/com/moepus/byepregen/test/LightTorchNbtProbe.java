@@ -1,25 +1,16 @@
 package com.moepus.byepregen.test;
 
-import com.moepus.byepregen.gcfree.GcFreeChunkSerializer;
-import java.io.ByteArrayInputStream;
-import java.io.DataInputStream;
-import java.io.IOException;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.NbtIo;
 import net.minecraft.world.level.chunk.ChunkAccess;
+import net.minecraft.world.level.chunk.storage.SerializableChunkData;
 import net.minecraft.server.level.ServerLevel;
 
 record LightTorchNbtProbe(int source, int adjacent, int distant, int nonZero) {
     static LightTorchNbtProbe capture(ServerLevel level, ChunkAccess chunk, BlockPos source) {
-        byte[] raw = GcFreeChunkSerializer.serializeRaw(level, chunk);
-        try (DataInputStream input = new DataInputStream(new ByteArrayInputStream(raw))) {
-            CompoundTag root = NbtIo.read(input);
-            return fromRoot(root, source);
-        } catch (IOException exception) {
-            throw new IllegalStateException("Failed to inspect GC-free chunk NBT", exception);
-        }
+        CompoundTag root = SerializableChunkData.copyOf(level, chunk).write();
+        return fromRoot(root, source);
     }
 
     boolean hasExpectedTorch() {
@@ -27,12 +18,12 @@ record LightTorchNbtProbe(int source, int adjacent, int distant, int nonZero) {
     }
 
     private static LightTorchNbtProbe fromRoot(CompoundTag root, BlockPos source) {
-        ListTag sections = root.getList("sections", 10);
+        ListTag sections = root.getListOrEmpty("sections");
         int sectionY = source.getY() >> 4;
         for (int i = 0; i < sections.size(); ++i) {
-            CompoundTag section = sections.getCompound(i);
-            if (section.getByte("Y") == (byte)sectionY) {
-                return fromBytes(section.getByteArray("BlockLight"), source);
+            CompoundTag section = sections.getCompoundOrEmpty(i);
+            if (section.getByteOr("Y", (byte)0) == (byte)sectionY) {
+                return fromBytes(section.getByteArray("BlockLight").orElse(new byte[0]), source);
             }
         }
         return new LightTorchNbtProbe(0, 0, 0, 0);

@@ -65,15 +65,20 @@ final public class BlockStateNbtCache {
 
     private static void writeStateEntryUncached(NbtWriter writer, BlockState state) {
         writer.putString(NAME, blockName(state.getBlock()));
-        if (state.getValues().isEmpty()) {
+        if (state.getProperties().isEmpty()) {
             return;
         }
 
         writer.startCompound(PROPERTIES);
-        for (Map.Entry<Property<?>, Comparable<?>> entry : state.getValues().entrySet()) {
-            writer.putString(propertyName(entry.getKey()), propertyValueName(entry.getKey(), entry.getValue()));
+        for (Property<?> property : state.getProperties()) {
+            writer.putString(propertyName(property), propertyValueName(property, stateValue(state, property)));
         }
         writer.finishCompound();
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static Comparable<?> stateValue(BlockState state, Property property) {
+        return (Comparable) state.getValue(property);
     }
 
     private static byte[] blockName(Block block) {

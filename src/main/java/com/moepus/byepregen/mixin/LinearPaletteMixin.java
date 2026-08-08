@@ -1,7 +1,8 @@
 package com.moepus.byepregen.mixin;
 
 import com.moepus.byepregen.PaletteContainer.PaletteRawIdAccess;
-import net.minecraft.core.IdMap;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LinearPalette;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -9,10 +10,6 @@ import org.spongepowered.asm.mixin.Shadow;
 
 @Mixin(value = LinearPalette.class, remap = false)
 public abstract class LinearPaletteMixin<T> implements PaletteRawIdAccess {
-    @Shadow
-    @Final
-    private IdMap<T> registry;
-
     @Shadow
     @Final
     private T[] values;
@@ -25,6 +22,8 @@ public abstract class LinearPaletteMixin<T> implements PaletteRawIdAccess {
         if (localId < 0 || localId >= this.size) {
             return -1;
         }
-        return this.registry.getId(this.values[localId]);
+        return this.values[localId] instanceof BlockState state
+                ? Block.BLOCK_STATE_REGISTRY.getId(state)
+                : -1;
     }
 }

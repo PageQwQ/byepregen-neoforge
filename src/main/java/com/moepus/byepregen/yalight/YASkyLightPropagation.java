@@ -198,7 +198,7 @@ final class YASkyLightPropagation {
             int level,
             int directionIndex
     ) {
-        long targetOwner = ChunkPos.asLong(toX >> 4, toZ >> 4);
+        long targetOwner = ChunkPos.pack(toX >> 4, toZ >> 4);
         byte targetOwnerState = engine.ownerTransfers.state(targetOwner);
         if (!engine.ownerTransfers.isTransferTarget(targetOwnerState)) {
             return false;
