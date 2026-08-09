@@ -19,14 +19,6 @@ public final class MixinPlugin implements IMixinConfigPlugin {
     private static final String CHUNK_SERIALIZER_ARENA_READ_MIXIN =
             MIXIN_PACKAGE + "PalettedContainerFactoryArenaMixin";
     private static final String LEVEL_CHUNK_ARENA_MIXIN = MIXIN_PACKAGE + "LevelChunkArenaMixin";
-    private static final String NOISE_CHUNK_ACCESSOR = MIXIN_PACKAGE + "NoiseChunkAccessor";
-    private static final String NOISE_CHUNK_ARENA_MIXIN = MIXIN_PACKAGE + "NoiseChunkArenaMixin";
-    private static final String NOISE_CELL_CACHE_ARENA_MIXIN =
-            MIXIN_PACKAGE + "NoiseChunkCellCacheArenaMixin";
-    private static final String NOISE_INTERPOLATOR_ARENA_MIXIN =
-            MIXIN_PACKAGE + "NoiseInterpolatorArenaMixin";
-    private static final String NOISE_GENERATOR_ARENA_MIXIN =
-            MIXIN_PACKAGE + "NoiseBasedChunkGeneratorArenaMixin";
     private static final String VOXY_ARENA_MIXIN =
             MIXIN_PACKAGE + "compat.VoxyWorldConversionFactoryMixin";
 
@@ -34,11 +26,6 @@ public final class MixinPlugin implements IMixinConfigPlugin {
             CHUNK_ACCESS_ARENA_MIXIN,
             CHUNK_SERIALIZER_ARENA_READ_MIXIN,
             LEVEL_CHUNK_ARENA_MIXIN,
-            NOISE_CHUNK_ACCESSOR,
-            NOISE_CHUNK_ARENA_MIXIN,
-            NOISE_CELL_CACHE_ARENA_MIXIN,
-            NOISE_INTERPOLATOR_ARENA_MIXIN,
-            NOISE_GENERATOR_ARENA_MIXIN,
             VOXY_ARENA_MIXIN
     );
 

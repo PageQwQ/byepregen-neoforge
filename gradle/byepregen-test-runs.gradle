@@ -335,6 +335,7 @@ tasks.matching { it.name == 'runTestWorldGen' }.configureEach {
                 yaLight      : worldGenConfig.yaLight,
                 gcFree       : worldGenConfig.gcFree,
                 fastTickChunks: prop('byepregenTestWorldGenFastTickChunks', 'false'),
+                arenaPalette : prop('byepregenTestWorldGenArenaPalette', 'true'),
                 clearWorld   : true,
         ])
     }
